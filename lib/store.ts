@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
 
+import { captureError } from './telemetry';
 import type { Book, Entry } from './types';
 
 type State = {
@@ -30,8 +31,9 @@ async function persist() {
   try {
     const { loaded: _loaded, ...rest } = state;
     await AsyncStorage.setItem(KEY, JSON.stringify(rest));
-  } catch {
+  } catch (err) {
     // Storage full or unavailable; in-memory state still works.
+    captureError('store.persist', err, { books: state.books.length });
   }
 }
 
@@ -50,7 +52,8 @@ export async function loadState(): Promise<void> {
     } else {
       state = { ...state, loaded: true };
     }
-  } catch {
+  } catch (err) {
+    captureError('store.load', err);
     state = { ...state, loaded: true };
   }
   for (const l of listeners) l();

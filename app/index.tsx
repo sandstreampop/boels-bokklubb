@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCard } from '@/components/BookCard';
 import { RainbowBar } from '@/components/Rainbow';
 import { RoundButton } from '@/components/RoundButton';
+import { useScreen } from '@/lib/screen';
 import { useStore } from '@/lib/store';
 import { pullBooks } from '@/lib/sync';
 import { colors, fonts } from '@/lib/theme';
@@ -20,6 +21,7 @@ export default function Library() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const cardWidth = Math.floor((Math.min(width, 700) - GUTTER * 2 - GAP) / 2);
+  useScreen('library', { books: books.length });
 
   useFocusEffect(
     useCallback(() => {

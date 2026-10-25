@@ -10,6 +10,7 @@ import { AppState } from 'react-native';
 import { deleteFile, fileExists, mimeFor } from './files';
 import { patchBook, patchEntry, rememberLocalMedia } from './store';
 import { supabase } from './supabase';
+import { captureError, debug, info, warn } from './telemetry';
 import { requestTranscription } from './transcribe';
 import type { Book, Entry } from './types';
 
@@ -30,17 +31,19 @@ async function load() {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     queue = raw ? (JSON.parse(raw) as Job[]) : [];
-  } catch {
+  } catch (err) {
+    captureError('outbox.load', err);
     queue = [];
   }
   loaded = true;
+  if (queue.length) info('outbox.loaded', { jobs: queue.length, kinds: queue.map((j) => j.kind) });
 }
 
 async function save() {
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(queue));
-  } catch {
-    // ignore
+  } catch (err) {
+    captureError('outbox.save', err, { jobs: queue.length });
   }
   for (const l of statusListeners) l(queue.length);
 }
@@ -64,11 +67,13 @@ async function uploadFile(bucket: 'covers' | 'media', path: string, localUri: st
   const file = new File(localUri);
   const buf = await file.arrayBuffer();
   const ext = path.split('.').pop() ?? '';
+  const t0 = Date.now();
   const { error } = await supabase.storage.from(bucket).upload(path, buf, {
     contentType: mimeFor(ext),
     upsert: true,
   });
   if (error) throw error;
+  info('outbox.upload.ok', { bucket, path, bytes: buf.byteLength, ms: Date.now() - t0 });
 }
 
 async function runJob(job: Job): Promise<void> {
@@ -78,6 +83,8 @@ async function runJob(job: Job): Promise<void> {
       if (fileExists(job.coverLocalUri)) {
         await uploadFile('covers', book.cover_path, job.coverLocalUri);
         rememberLocalMedia(book.cover_path, job.coverLocalUri);
+      } else {
+        warn('outbox.cover.missing', { bookId: book.id, uri: job.coverLocalUri });
       }
     }
     const { error } = await supabase.from('books').upsert({
@@ -103,6 +110,7 @@ async function runJob(job: Job): Promise<void> {
   if (entry.media_path && job.mediaLocalUri) {
     if (!fileExists(job.mediaLocalUri)) {
       // The file is gone (should not happen: we keep files in the document dir). Save what we can.
+      warn('outbox.media.missing', { entryId: entry.id, uri: job.mediaLocalUri });
       patchEntry(entry.book_id, entry.id, { pending: false });
       const { error } = await supabase.from('entries').upsert({ ...rowOf(entry), media_path: null });
       if (error) throw error;
@@ -134,20 +142,25 @@ export async function processOutbox(): Promise<void> {
   await load();
   if (running || queue.length === 0) return;
   const { data } = await supabase.auth.getSession();
-  if (!data.session) return;
+  if (!data.session) {
+    debug('outbox.skip', { reason: 'no session', jobs: queue.length });
+    return;
+  }
   running = true;
   try {
     // Oldest first, and a book must land before its entries.
     while (queue.length > 0) {
       const job = queue[0];
+      const t0 = Date.now();
       try {
         await runJob(job);
         queue.shift();
         await save();
+        info('outbox.job.ok', { kind: job.kind, id: job.id, attempts: job.attempts, ms: Date.now() - t0, left: queue.length });
       } catch (err) {
         job.attempts += 1;
         await save();
-        console.warn('outbox job failed', job.kind, job.attempts, err);
+        captureError('outbox.job', err, { kind: job.kind, id: job.id, attempts: job.attempts, ms: Date.now() - t0 }, job.attempts >= 3 ? 'error' : 'warn');
         scheduleRetry(job.attempts);
         break;
       }
@@ -173,6 +186,7 @@ export function startOutbox() {
     if (s === 'active') void processOutbox();
   });
   Network.addNetworkStateListener((s) => {
+    debug('network.change', { connected: s.isConnected, reachable: s.isInternetReachable, type: s.type });
     if (s.isConnected && s.isInternetReachable !== false) void processOutbox();
   });
 }

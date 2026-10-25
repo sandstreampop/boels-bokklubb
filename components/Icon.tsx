@@ -16,7 +16,8 @@ export type IconName =
   | 'stop'
   | 'pencil'
   | 'unicorn'
-  | 'lock';
+  | 'lock'
+  | 'refresh';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -49,6 +50,12 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
           <Rect x={3.5} y={5} width={17} height={14} rx={2.5} {...common} />
           <Circle cx={9} cy={10} r={1.6} {...common} />
           <Path d="M4 17l5-5 3 3 3-3 5 5" {...common} />
+        </>
+      )}
+      {name === 'refresh' && (
+        <>
+          <Path d="M20 12a8 8 0 1 1-2.6-5.9" {...common} />
+          <Polyline points="20,3 20,8.5 14.5,8.5" {...common} />
         </>
       )}
       {name === 'check' && <Polyline points="5,12.5 10,17.5 19,7" {...common} />}

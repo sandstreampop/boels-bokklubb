@@ -4,10 +4,15 @@ import { dirs, extensionOf, keepFile } from './files';
 import { uuid } from './ids';
 import { enqueue } from './outbox';
 import { patchBook, rememberLocalMedia, upsertBook, upsertEntry } from './store';
+import { traced } from './telemetry';
 import type { Book, Entry } from './types';
 
-export async function addBook(input: { title: string; author: string | null; coverUri: string | null }): Promise<Book> {
+export function addBook(input: { title: string; author: string | null; coverUri: string | null }): Promise<Book> {
   const id = uuid();
+  return traced('action.addBook', { id, title: input.title, hasCover: !!input.coverUri }, () => addBookInner(id, input));
+}
+
+async function addBookInner(id: string, input: { title: string; author: string | null; coverUri: string | null }): Promise<Book> {
   let cover_path: string | null = null;
   let coverLocalUri: string | null = null;
   if (input.coverUri) {
@@ -30,12 +35,18 @@ export async function addBook(input: { title: string; author: string | null; cov
   return book;
 }
 
-export async function rateBook(bookId: string, rating: number): Promise<void> {
-  patchBook(bookId, { rating });
-  await enqueue({ id: uuid(), kind: 'rating', bookId, rating, attempts: 0 });
+export function rateBook(bookId: string, rating: number): Promise<void> {
+  return traced('action.rateBook', { bookId, rating }, async () => {
+    patchBook(bookId, { rating });
+    await enqueue({ id: uuid(), kind: 'rating', bookId, rating, attempts: 0 });
+  });
 }
 
-export async function addTextEntry(bookId: string, text: string): Promise<void> {
+export function addTextEntry(bookId: string, text: string): Promise<void> {
+  return traced('action.addTextEntry', { bookId, chars: text.length }, () => addTextEntryInner(bookId, text));
+}
+
+async function addTextEntryInner(bookId: string, text: string): Promise<void> {
   const entry: Entry = {
     id: uuid(),
     book_id: bookId,
@@ -52,7 +63,11 @@ export async function addTextEntry(bookId: string, text: string): Promise<void> 
   await enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: null, attempts: 0 });
 }
 
-export async function addPhotoEntry(bookId: string, photoUri: string): Promise<void> {
+export function addPhotoEntry(bookId: string, photoUri: string): Promise<void> {
+  return traced('action.addPhotoEntry', { bookId }, () => addPhotoEntryInner(bookId, photoUri));
+}
+
+async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<void> {
   const id = uuid();
   const ext = extensionOf(photoUri, 'jpg');
   const media_path = `${bookId}/${id}.${ext}`;
@@ -74,7 +89,13 @@ export async function addPhotoEntry(bookId: string, photoUri: string): Promise<v
   await enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }
 
-export async function addAudioEntry(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
+export function addAudioEntry(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
+  return traced('action.addAudioEntry', { bookId, durationMs, recovered: !!createdAt }, () =>
+    addAudioEntryInner(bookId, audioUri, durationMs, createdAt),
+  );
+}
+
+async function addAudioEntryInner(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
   const id = uuid();
   const ext = extensionOf(audioUri, 'm4a');
   const media_path = `${bookId}/${id}.${ext}`;

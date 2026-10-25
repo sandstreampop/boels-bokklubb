@@ -21,20 +21,27 @@ import { StarRating } from '@/components/StarRating';
 import { addAudioEntry, addPhotoEntry, addTextEntry, rateBook } from '@/lib/actions';
 import { pickPhoto } from '@/lib/images';
 import { useMediaUri } from '@/lib/media';
+import { useScreen } from '@/lib/screen';
 import { useStore } from '@/lib/store';
 import { pullEntries } from '@/lib/sync';
+import { captureError, warn } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
+import type { Entry } from '@/lib/types';
+
+// useSyncExternalStore needs a stable snapshot: a fresh [] on every read loops until React throws.
+const NO_ENTRIES: Entry[] = [];
 
 export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const book = useStore((s) => s.books.find((b) => b.id === id));
-  const entries = useStore((s) => s.entries[id ?? ''] ?? []);
+  const entries = useStore((s) => s.entries[id ?? ''] ?? NO_ENTRIES);
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
+  useScreen('book', { id, found: !!book, entries: entries.length });
 
   useFocusEffect(
     useCallback(() => {
@@ -46,14 +53,22 @@ export default function BookPage() {
     const t = text.trim();
     if (!t || !id) return;
     setText('');
-    await addTextEntry(id, t);
+    try {
+      await addTextEntry(id, t);
+    } catch (err) {
+      captureError('book.sendText', err, { bookId: id });
+    }
   };
 
   const takePhoto = async (source: 'camera' | 'library') => {
     setPhotoSheet(false);
     if (!id) return;
-    const uri = await pickPhoto(source);
-    if (uri) await addPhotoEntry(id, uri);
+    try {
+      const uri = await pickPhoto(source);
+      if (uri) await addPhotoEntry(id, uri);
+    } catch (err) {
+      captureError('book.takePhoto', err, { bookId: id, source });
+    }
   };
 
   const header = useMemo(
@@ -113,6 +128,7 @@ export default function BookPage() {
   );
 
   if (!book || !id) {
+    warn('book.missing', { id });
     return <View style={styles.root} />;
   }
 
@@ -147,7 +163,7 @@ export default function BookPage() {
         visible={recording}
         onDone={(uri, ms) => {
           setRecording(false);
-          void addAudioEntry(id, uri, ms);
+          addAudioEntry(id, uri, ms).catch((err) => captureError('book.addAudio', err, { bookId: id, ms }));
         }}
         onUnavailable={() => setRecording(false)}
       />

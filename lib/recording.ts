@@ -5,6 +5,7 @@ import { File } from 'expo-file-system';
 
 import { addAudioEntry } from './actions';
 import { dirs, fileExists, fileSize } from './files';
+import { captureError, info } from './telemetry';
 
 type Marker = { bookId: string; uri: string; startedAt: string };
 
@@ -18,7 +19,7 @@ export async function writeRecordingMarker(m: Marker): Promise<void> {
     if (!f.exists) f.create();
     await f.write(JSON.stringify(m));
   } catch (err) {
-    console.warn('marker write failed', err);
+    captureError('recording.marker.write', err, { bookId: m.bookId });
   }
 }
 
@@ -38,12 +39,18 @@ export async function recoverStrandedRecording(): Promise<boolean> {
     if (!f.exists) return false;
     const m = JSON.parse(await f.text()) as Marker;
     f.delete();
-    if (!m.uri || !fileExists(m.uri) || fileSize(m.uri) < 2048) return false;
+    const size = m.uri ? fileSize(m.uri) : 0;
+    if (!m.uri || !fileExists(m.uri) || size < 2048) {
+      info('recording.recover.skip', { bookId: m.bookId, size, exists: !!m.uri && fileExists(m.uri) });
+      return false;
+    }
     const startedAt = new Date(m.startedAt).getTime();
     const durationMs = Math.max(1000, Math.min(Date.now() - startedAt, 15 * 60 * 1000));
+    info('recording.recover', { bookId: m.bookId, size, durationMs, startedAt: m.startedAt });
     await addAudioEntry(m.bookId, m.uri, durationMs, m.startedAt);
     return true;
-  } catch {
+  } catch (err) {
+    captureError('recording.recover', err);
     return false;
   }
 }

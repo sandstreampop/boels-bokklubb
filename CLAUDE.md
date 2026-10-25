@@ -33,12 +33,25 @@ Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust me
   EAS prompts for the first interactive iOS credential setup.
 - `.github/workflows/testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.
 
+## Observability (the testing loop)
+
+Every screen, action and background job logs to `lib/telemetry.ts`, which buffers to a file and
+ships to the `app_events` table. Uncaught errors, unhandled rejections, console.error/warn, render
+crashes (via `components/ErrorBoundary.tsx`) and abnormal exits (launch marker) are all captured
+with the breadcrumbs before them. When Viktor reports something broke: `npm run logs -- --since 1h`
+then `npm run logs -- --session <id>` for the full trail of that launch. New code must log through
+`info`/`warn`/`captureError`/`traced`, never swallow an error silently, and use `useScreen` in new
+screens. Run `npx expo-doctor` before every build: a missing native peer dependency crashes a
+TestFlight build without any JS error.
+
 ## Commands
 
     npm run typecheck   # tsc --noEmit
     npm run lint        # expo lint
+    npm run logs        # tail app telemetry (--since 2h, --level warn, --session <id>, --sessions, --follow)
+    npm run migrate     # apply supabase/migrations through the Management API
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
-    npm run build:ios   # eas build --platform ios --profile production --auto-submit
+    npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit from the secrets, no prompts
 
 Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own.
 

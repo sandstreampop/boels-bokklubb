@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
 import { formatDuration } from '@/lib/format';
 import { clearRecordingMarker, writeRecordingMarker } from '@/lib/recording';
+import { captureError, info } from '@/lib/telemetry';
 import { colors, fonts } from '@/lib/theme';
 
 const MAX_SECONDS = 10 * 60;
@@ -53,6 +54,7 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
       try {
         const perm = await AudioModule.requestRecordingPermissionsAsync();
         if (!perm.granted) {
+          info('recording.denied', { status: perm.status });
           onUnavailable();
           return;
         }
@@ -61,6 +63,7 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
         if (cancelled) return;
         recorder.record({ forDuration: MAX_SECONDS });
         startedAt.current = Date.now();
+        info('recording.start', { bookId, uri: recorder.uri });
         setPhase('recording');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         pulse.set(withRepeat(withTiming(1.6, { duration: 1100, easing: Easing.out(Easing.quad) }), -1, false));
@@ -68,7 +71,7 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
           void writeRecordingMarker({ bookId, uri: recorder.uri, startedAt: new Date(startedAt.current).toISOString() });
         }
       } catch (err) {
-        console.warn('recorder failed to start', err);
+        captureError('recording.start', err, { bookId });
         onUnavailable();
       }
     })();
@@ -93,11 +96,12 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
     try {
       if (recorder.isRecording) await recorder.stop();
     } catch (err) {
-      console.warn('stop failed', err);
+      captureError('recording.stop', err, { bookId });
     }
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     const uri = recorder.uri;
     const durationMs = Math.max(state.durationMillis, Date.now() - startedAt.current);
+    info('recording.done', { bookId, durationMs, hasUri: !!uri });
     clearRecordingMarker();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     if (uri) onDone(uri, durationMs);

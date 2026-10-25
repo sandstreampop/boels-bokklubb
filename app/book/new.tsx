@@ -8,6 +8,8 @@ import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
 import { addBook } from '@/lib/actions';
 import { pickPhoto } from '@/lib/images';
+import { useScreen } from '@/lib/screen';
+import { captureError } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
 
 export default function NewBook() {
@@ -18,18 +20,29 @@ export default function NewBook() {
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useScreen('book.new');
+
   const canSave = title.trim().length > 0 && !saving;
 
   const pick = async (source: 'camera' | 'library') => {
-    const uri = await pickPhoto(source);
-    if (uri) setCoverUri(uri);
+    try {
+      const uri = await pickPhoto(source);
+      if (uri) setCoverUri(uri);
+    } catch (err) {
+      captureError('book.new.pick', err, { source });
+    }
   };
 
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
-    const book = await addBook({ title: title.trim(), author: author.trim() || null, coverUri });
-    router.replace({ pathname: '/book/[id]', params: { id: book.id } });
+    try {
+      const book = await addBook({ title: title.trim(), author: author.trim() || null, coverUri });
+      router.replace({ pathname: '/book/[id]', params: { id: book.id } });
+    } catch (err) {
+      captureError('book.new.save', err, { hasCover: !!coverUri });
+      setSaving(false);
+    }
   };
 
   return (

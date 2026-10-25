@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { dirs, fileExists } from './files';
 import { getState, rememberLocalMedia, useStore } from './store';
 import { supabase } from './supabase';
+import { captureError, debug } from './telemetry';
 
 const inflight = new Map<string, Promise<string | null>>();
 
@@ -29,14 +30,17 @@ export async function resolveMedia(bucket: 'covers' | 'media', path: string): Pr
 
   const p = (async () => {
     try {
+      const t0 = Date.now();
       const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 600);
-      if (error || !data?.signedUrl) return null;
+      if (error) throw error;
+      if (!data?.signedUrl) return null;
       if (dest.exists) dest.delete();
       const file = await File.downloadFileAsync(data.signedUrl, dest);
       rememberLocalMedia(path, file.uri);
+      debug('media.download.ok', { bucket, path, bytes: file.size, ms: Date.now() - t0 });
       return file.uri;
     } catch (err) {
-      console.warn('media download failed', path, err);
+      captureError('media.download', err, { bucket, path }, 'warn');
       return null;
     } finally {
       inflight.delete(path);

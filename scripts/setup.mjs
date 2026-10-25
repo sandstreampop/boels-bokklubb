@@ -2,7 +2,7 @@
 // One-shot provisioning for Boels bokklubb. Idempotent: safe to run again.
 //
 //   node scripts/setup.mjs            run everything
-//   node scripts/setup.mjs supabase   only the Supabase part (also: user, env, github, eas, testflight)
+//   node scripts/setup.mjs supabase   only the Supabase part (also: migrate, user, env, github, eas, testflight)
 //
 // Reads the secrets listed in README.md from the environment. Never prints them.
 
@@ -64,13 +64,7 @@ async function supabase() {
   const mgmt = `https://api.supabase.com/v1/projects/${ref}`;
   const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'content-type': 'application/json' };
 
-  log('Supabase: applying migrations');
-  const dir = join(ROOT, 'supabase', 'migrations');
-  for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
-    const query = readFileSync(join(dir, f), 'utf8');
-    await api(`${mgmt}/database/query`, { method: 'POST', headers, body: JSON.stringify({ query }) });
-    ok(f);
-  }
+  await migrate();
 
   log('Supabase: reading API keys');
   const keys = await api(`${mgmt}/api-keys?reveal=true`, { headers });
@@ -107,6 +101,20 @@ async function supabase() {
     body: JSON.stringify([{ name: 'OPENAI_API_KEY', value: process.env.OPENAI_API_KEY }]),
   });
   ok('OPENAI_API_KEY stored');
+}
+
+/** Applies every file in supabase/migrations, in order. All of them are written to be rerunnable. */
+async function migrate() {
+  need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
+  const ref = new URL(projectUrl()).hostname.split('.')[0];
+  const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'content-type': 'application/json' };
+  log('Supabase: applying migrations');
+  const dir = join(ROOT, 'supabase', 'migrations');
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+    const query = readFileSync(join(dir, f), 'utf8');
+    await api(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers, body: JSON.stringify({ query }) });
+    ok(f);
+  }
 }
 
 async function familyUser(url, serviceKey) {
@@ -284,6 +292,7 @@ async function main() {
   console.log(`Boels bokklubb setup for ${BUNDLE_ID}`);
   if (want('supabase')) await supabase();
   if (steps.includes('user')) await user();
+  if (steps.includes('migrate')) await migrate();
   if (want('env')) env();
   if (want('github')) github();
   if (want('eas')) eas();

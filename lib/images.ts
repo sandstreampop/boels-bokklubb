@@ -1,21 +1,31 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
+import { info, traced } from './telemetry';
+
 const MAX_SIDE = 1600;
 
 /** Open camera or library. Resolves to a downsized JPEG uri in the cache dir, or null if cancelled. */
 export async function pickPhoto(source: 'camera' | 'library'): Promise<string | null> {
   if (source === 'camera') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return null;
+    if (!perm.granted) {
+      info('image.camera.denied', { status: perm.status });
+      return null;
+    }
   }
   const result =
     source === 'camera'
       ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, selectionLimit: 1 });
-  if (result.canceled || !result.assets?.length) return null;
+  if (result.canceled || !result.assets?.length) {
+    info('image.pick.cancelled', { source });
+    return null;
+  }
   const asset = result.assets[0];
-  return shrinkToJpeg(asset.uri, asset.width, asset.height);
+  return traced('image.shrink', { source, width: asset.width, height: asset.height, bytes: asset.fileSize ?? null }, () =>
+    shrinkToJpeg(asset.uri, asset.width, asset.height),
+  );
 }
 
 export async function shrinkToJpeg(uri: string, width?: number, height?: number): Promise<string> {

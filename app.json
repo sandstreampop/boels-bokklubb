@@ -7,7 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.sandstreampop.boelsbokklubb",
       "buildNumber": "1",
@@ -79,7 +78,8 @@
             "./node_modules/@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

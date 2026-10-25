@@ -6,14 +6,6 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The unicorn has moved to the top right corner and rests there: after her entrance she only moves
-  when something happens. Tap her for a trick, save something and she hops, finish a rainbow book
-  and she jumps. No fidgeting in between.
-- The unicorn has a voice: a chirp when she arrives, a trill when she is happy, a sneeze when she
-  sneezes. She follows into every mode, beside the timer while the mic is open, under the text,
-  below the canvas, and leaves while a card is shared. Enhörningens röst: rubberduck
-  (opengameart.org), CC0.
-
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so
@@ -23,6 +15,16 @@ open a book, record, write, draw, share a card.
 - The unicorn companion and its sounds are inside the app but not on stage yet.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
+
+### Update 01a17420 (2026-10-25)
+
+- The unicorn has moved to the top right corner and rests there: after her entrance she only moves
+  when something happens. Tap her for a trick, save something and she hops, finish a rainbow book
+  and she jumps. No fidgeting in between.
+- The unicorn has a voice: a chirp when she arrives, a trill when she is happy, a sneeze when she
+  sneezes. She follows into every mode, beside the timer while the mic is open, under the text,
+  below the canvas, and leaves while a card is shared. Enhörningens röst: rubberduck
+  (opengameart.org), CC0.
 
 ### Update 01a1741a (2026-10-25)
 

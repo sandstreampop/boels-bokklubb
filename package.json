@@ -60,8 +60,7 @@
     "build:ios": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/ship.mjs",
     "logs": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/logs.mjs",
     "migrate": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/setup.mjs migrate",
-    "update": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/ship.mjs update",
-    "eas": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/eas.mjs"
+    "update": "NODE_USE_ENV_PROXY=1 node --no-warnings scripts/ship.mjs update"
   },
   "private": true
 }

@@ -17,8 +17,10 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 - The stream is append-only. Nothing in the app edits or deletes. Fixes happen via Supabase.
 - No autocorrect, no spellcheck anywhere. Her spelling is the point. Every TextInput sets
   `autoCorrect={false} spellCheck={false} autoCapitalize="none"`.
-- Recording: tap to start, tap to stop, no cancel path. Any tap stops and saves. Audio is written to
-  the document directory and a marker file lets a crash still produce an entry on next launch.
+- Recording: the mic opens the recording mode with the prompt and one record button; recording starts
+  when she presses that button, and from then on any tap stops and saves, no cancel path. Before
+  the button is pressed a tap outside it just closes the mode. Audio is written to the document
+  directory and a marker file lets a crash still produce an entry on next launch.
 - Transcription is a bonus. Audio is always kept. Swedish is hinted, not forced.
 - Minimal text in the UI, icons over labels, no explaining prose. Swedish where words are needed.
 - Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts. The magic
@@ -95,7 +97,10 @@ TestFlight build without any JS error.
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
     npm run update      # JS-only change over the air to installed builds, about a minute
     npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit, about 25 minutes, native changes only
-    npm run eas -- …    # any other eas-cli command, with .env loaded (eas-cli evaluates app.config.ts without it)
+    NODE_USE_ENV_PROXY=1 node --no-warnings scripts/eas.mjs …   # any other eas-cli command, with .env loaded
+
+Do not add npm scripts between native builds: package.json scripts are part of the runtime
+fingerprint, and a changed fingerprint means updates no longer reach the installed build.
 
 Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own.
 

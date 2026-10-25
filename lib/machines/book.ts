@@ -3,6 +3,7 @@
 //   idle ──START_WRITING──▶ writing ──WRITING_DONE──▶ idle (fresh write prompt; the writer saved)
 //   idle ──OPEN_PHOTOS──▶ choosingPhoto ──PICK──▶ takingPhoto ──▶ idle
 //   idle ──START_RECORDING──▶ recording (fresh speak prompt) ──RECORDING_DONE──▶ savingAudio ──▶ idle
+//                                  └─RECORDING_SKIPPED / RECORDING_UNAVAILABLE──▶ idle
 //   idle ──START_DRAWING──▶ drawing (fresh draw prompt) ──DRAWING_DONE(uri)──▶ savingDrawing ──▶ idle
 //   idle ──DRAW_COVER──▶ drawingCover ──COVER_DONE(uri)──▶ savingCover ──▶ idle   (only while the book has no cover)
 //   idle ──RATE──▶ idle (rating is queued immediately)
@@ -34,6 +35,7 @@ type Events =
   | { type: 'START_RECORDING' }
   | { type: 'RECORDING_DONE'; uri: string; durationMs: number }
   | { type: 'RECORDING_UNAVAILABLE' }
+  | { type: 'RECORDING_SKIPPED' }
   | { type: 'START_DRAWING' }
   | { type: 'DRAWING_DONE'; uri: string | null }
   | { type: 'DRAW_COVER' }
@@ -139,7 +141,7 @@ export const bookMachine = setup({
     },
     recording: {
       entry: assign({ speakPrompt: () => pickPrompt('speak') }),
-      on: { RECORDING_DONE: 'savingAudio', RECORDING_UNAVAILABLE: 'idle' },
+      on: { RECORDING_DONE: 'savingAudio', RECORDING_UNAVAILABLE: 'idle', RECORDING_SKIPPED: 'idle' },
     },
     savingAudio: {
       invoke: {

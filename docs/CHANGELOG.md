@@ -8,6 +8,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 - Hold a finger on any entry, or on the totals page, to send it as a picture card: the cover,
   the title and stars, the question, her words, the date and a rainbow.
+- The mic opens the recording screen with the question and a record button; recording starts
+  when she presses the button, not before. A tap outside the button closes the screen.
 
 ## Build 6 (2026-10-25, TestFlight)
 

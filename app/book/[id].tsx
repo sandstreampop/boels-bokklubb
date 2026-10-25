@@ -123,6 +123,7 @@ export default function BookPage() {
         visible={recording}
         onDone={(uri, durationMs) => send({ type: 'RECORDING_DONE', uri, durationMs })}
         onUnavailable={() => send({ type: 'RECORDING_UNAVAILABLE' })}
+        onSkip={() => send({ type: 'RECORDING_SKIPPED' })}
         prompt={speakPrompt}
         onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'speak' })}
       />

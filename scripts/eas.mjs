@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Runs eas-cli with the public app values from .env in its environment.
 //
-//   npm run eas -- build:list --platform ios
+//   NODE_USE_ENV_PROXY=1 node --no-warnings scripts/eas.mjs build:list --platform ios
+//
+// Not an npm script on purpose: package.json scripts are part of the runtime fingerprint, so
+// adding one would stop updates reaching the installed build until the next native build.
 //
 // Why: eas-cli evaluates app.config.ts with EXPO_NO_DOTENV=1 for every command, and the config
 // refuses to evaluate without EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (see the

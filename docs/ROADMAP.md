@@ -56,13 +56,28 @@ Push to main ships: an update, or a native build with a new version number and t
 section in TestFlight's "What to Test". A push without its changelog line is refused. Live once
 Viktor has put the eight secrets into GitHub Actions (the cloud proxy blocks setting them).
 
-## Later: build 8 and beyond (not designed yet)
+## Next: build 8, "släkten" (docs/PRD-build-8.md)
 
-- Read-only feed for relatives: a web page per family link showing the same cards. Needs a share
-  token, a public read path in Supabase, and a small web app. Decided to design the card first so
-  the feed is the card.
+Decided with Viktor 2026-10-25. Relatives see what Boel made without Viktor sending each card.
+
+1. One secret link plus a four-digit PIN separate from the family password; the device remembers
+   for a year; five wrong PINs lock the link for fifteen minutes.
+2. A static page (Vite, TypeScript, `web/`) on GitHub Pages at the github.io address, a domain
+   later. The six totals on top, then every share card newest first, thirty at a time, her voice
+   playable. Grandparents on iPhones and at least one Android reader.
+3. One `feed` edge function reads with the service role and hands out signed URLs; the anon key
+   never gains a read path. One new table for the lockout, so build 8 is a native build (1.1.0).
+4. Nothing in the app changes, nothing flows back, nothing notifies. Errors only in telemetry.
+5. Shipping gains a third path: changes under `web/` deploy the page and the function, with their
+   own changelog lines under `### Flödet`.
+
+Success: within a month a relative mentions something Boel made without Viktor having sent it.
+
+## Later: build 9 and beyond (not designed yet)
+
 - Parent-recorded prompt clips as an optional override of the text prompts.
 - Android build, if a relative wants it. The config is already there.
+- A domain for the feed (a CNAME file, no code change) once Viktor buys one.
 
 ## Not doing
 

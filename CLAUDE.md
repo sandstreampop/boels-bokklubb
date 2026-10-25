@@ -5,8 +5,8 @@ React Native, TypeScript, Expo Router) with Supabase for the database, file stor
 speech-to-text edge function. Distributed to the family through TestFlight internal testing.
 
 Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust memory for Expo APIs).
-The plan lives in docs/ROADMAP.md; build specs are docs/PRD-build-6.md then docs/PRD-build-7.md,
-and docs/PRD-changelog.md is the shipping pipeline (implemented 2026-10-25: sessions push, CI
+The plan lives in docs/ROADMAP.md; build specs are docs/PRD-build-6.md, docs/PRD-build-7.md and
+next docs/PRD-build-8.md (the relatives' feed), and docs/PRD-changelog.md is the shipping pipeline (implemented 2026-10-25: sessions push, CI
 ships). Start there. Telemetry is for finding bugs, never for measuring usage.
 
 ## Product rules, decided with Viktor

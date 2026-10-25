@@ -38,6 +38,14 @@ every transition, per CLAUDE.md.
   the moment the mic opens. Not spoken.
 - Writing: the prompt is the placeholder of the composer (slice 3 replaces the composer).
 - Drawing: shown at the top of the canvas (slice 5).
+- Reroll: a magic wand button sits beside every prompt (recording overlay, writing screen, canvas).
+  Tapping it swaps in a new random prompt from the same pool: the old prompt shrinks and tumbles
+  away, the new one springs in with a sparkle burst from the wand tip, a light haptic tick. No
+  limit on rerolls and nothing is stored about them. The wand is the `wand` icon in the icon set
+  (a tilted stick with three sparkle dots), 56 pt, pink on the white writing screen and the canvas,
+  white on the deep-pink recorder. Rerolling while recording keeps recording; the prompt that is on
+  screen when she saves is the one stored with the entry. Telemetry: `prompt.reroll` with pool and
+  count per session.
 - Stored: `entries.prompt text null` (migration 0003). The outbox sends it, sync reads it, the
   entry card shows it above her words in the muted style, smaller than her text. Audio entries
   show it above the player. Old entries have no prompt and look as today.
@@ -138,7 +146,8 @@ Apply with `npm run migrate` before shipping slice 1.
 - "Three screens only" becomes four: library, add book, book page, stats.
 - The book page input row is: mic, pencil, camera, crayon. Writing and drawing are full-screen
   modes like recording.
-- Add: "Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts."
+- Add: "Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts. The
+  magic wand rerolls a prompt anywhere one is shown."
 - Add: "Share is a long-press, never a visible button."
 
 ## 5. Non-goals for build 6

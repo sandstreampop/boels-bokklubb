@@ -53,7 +53,8 @@ Principles:
   token, a public read path in Supabase, and a small web app. Decided to design the card first so
   the feed is the card.
 - Parent-recorded prompt clips as an optional override of the text prompts.
-- Monthly TestFlight refresh needs the four GitHub Actions secrets added by hand (proxy blocks it).
+- Shipping pipeline in CI (docs/PRD-changelog.md): push to main ships, versions bump, changelog
+  feeds TestFlight. Needs the GitHub Actions secrets Viktor adds by hand (proxy blocks it).
 - Android build, if a relative wants it. The config is already there.
 
 ## Not doing

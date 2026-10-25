@@ -6,11 +6,16 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The shared card fills the picture instead of sitting in a corner.
+## Build 7 (2026-10-25, TestFlight)
 
-## Unreleased
+What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so
+the next updates can switch them on one by one. Check that everything from build 6 still works:
+open a book, record, write, draw, share a card.
 
+- The unicorn companion and its sounds are inside the app but not on stage yet.
 - The shared card fills the whole picture instead of one corner.
+- Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
+- Everything from build 6 and its updates below.
 
 ## Build 6 (2026-10-25, TestFlight)
 

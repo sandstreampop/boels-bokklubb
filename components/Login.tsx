@@ -48,7 +48,7 @@ export function Login() {
             onChangeText={(p) => app.send({ type: 'SET_PASSWORD', password: p })}
             secureTextEntry
             keyboardType="number-pad"
-            autoCapitalize="none"
+            autoCapitalize="characters"
             autoCorrect={false}
             textContentType="password"
             returnKeyType="go"

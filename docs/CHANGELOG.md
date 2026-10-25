@@ -6,6 +6,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- The keyboard opens in capitals everywhere she writes: the writing screen, the blank in a
+  fill-in question, a book's name and author, and the password. Still no autocorrect.
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so

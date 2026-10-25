@@ -45,7 +45,7 @@ export default function NewBook() {
   const inputProps = {
     autoCorrect: false,
     spellCheck: false,
-    autoCapitalize: 'none' as const,
+    autoCapitalize: 'characters' as const,
     autoComplete: 'off' as const,
     returnKeyType: 'done' as const,
     maxLength: 120,

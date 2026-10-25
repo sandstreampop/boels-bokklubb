@@ -16,8 +16,9 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
   rating, stream of entries), stats (six totals, no time axis). Writing and drawing are full-screen
   modes like recording.
 - The stream is append-only. Nothing in the app edits or deletes. Fixes happen via Supabase.
-- No autocorrect, no spellcheck anywhere. Her spelling is the point. Every TextInput sets
-  `autoCorrect={false} spellCheck={false} autoCapitalize="none"`.
+- No autocorrect, no spellcheck anywhere, and the keyboard always opens in caps: she writes in
+  capitals. Her spelling is the point. Every TextInput sets
+  `autoCorrect={false} spellCheck={false} autoCapitalize="characters"`.
 - Recording: the mic opens the recording mode with the prompt and one record button; recording starts
   when she presses that button, and from then on any tap stops and saves, no cancel path. Before
   the button is pressed a tap outside it just closes the mode. Audio is written to the document

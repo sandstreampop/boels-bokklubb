@@ -59,7 +59,7 @@ export function WriterOverlay({ bookId, visible, prompt, onReroll, onDone }: Pro
     autoFocus: true,
     autoCorrect: false,
     spellCheck: false,
-    autoCapitalize: 'none' as const,
+    autoCapitalize: 'characters' as const,
     autoComplete: 'off' as const,
     maxLength: 4000,
     editable: writing,

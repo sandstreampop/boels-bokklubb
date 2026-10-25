@@ -1,0 +1,5 @@
+# Minimal config so `supabase functions deploy` works from this repo.
+project_id = "boels-bokklubb"
+
+[functions.transcribe]
+verify_jwt = false

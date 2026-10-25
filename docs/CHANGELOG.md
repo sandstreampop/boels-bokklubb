@@ -13,7 +13,6 @@ the next updates can switch them on one by one. Check that everything from build
 open a book, record, write, draw, share a card.
 
 - The unicorn companion and its sounds are inside the app but not on stage yet.
-- The shared card fills the whole picture instead of one corner.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
 
@@ -27,6 +26,10 @@ book and draw its cover.
 - A drawing can be a book's cover: a crayon under the cover slot when adding a book, or a tap on
   the empty cover of a book that has none.
 - Everything from the build 5 updates below.
+
+### Update 01a17403 (2026-10-25)
+
+- The shared card fills the whole picture instead of one corner.
 
 ### Update 01a173f9 (2026-10-25)
 

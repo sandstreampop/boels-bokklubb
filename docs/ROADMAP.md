@@ -58,18 +58,19 @@ Viktor has put the eight secrets into GitHub Actions (the cloud proxy blocks set
 
 ## Next: build 8, "släkten" (docs/PRD-build-8.md)
 
-Decided with Viktor 2026-10-25. Relatives see what Boel made without Viktor sending each card.
+Decided with Viktor 2026-10-25. The app on the web, read only, for relatives. The page is called
+Boels bokklubb; "släkten" is the build's name here only.
 
-1. One secret link plus a four-digit PIN separate from the family password; the device remembers
-   for a year; five wrong PINs lock the link for fifteen minutes.
-2. A static page (Vite, TypeScript, `web/`) on GitHub Pages at the github.io address, a domain
-   later. The six totals on top, then every share card newest first, thirty at a time, her voice
-   playable. Grandparents on iPhones and at least one Android reader.
-3. One `feed` edge function reads with the service role and hands out signed URLs; the anon key
-   never gains a read path. One new table for the lockout, so build 8 is a native build (1.1.0).
+1. The three read screens rebuilt in `web/` (Vite, TypeScript, no framework): library, book page
+   with her voice playable, stats. No plus button, mic, pencil, camera, crayon, star input or share.
+2. One secret link plus a four-digit PIN separate from the family password. The device remembers
+   for a year. Five wrong PINs lock the link for fifteen minutes.
+3. Static page on GitHub Pages at the github.io address, a domain later. One `feed` edge function
+   reads with the service role and hands out signed URLs; the anon key gains no read path. One new
+   table for the lockout, so build 8 is a native build (1.1.0).
 4. Nothing in the app changes, nothing flows back, nothing notifies. Errors only in telemetry.
-5. Shipping gains a third path: changes under `web/` deploy the page and the function, with their
-   own changelog lines under `### Flödet`.
+5. Shipping gains a web path: changes under `web/` deploy the page and the function, with changelog
+   lines under `### Web`.
 
 Success: within a month a relative mentions something Boel made without Viktor having sent it.
 

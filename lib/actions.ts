@@ -93,6 +93,44 @@ async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<voi
   enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }
 
+export function addDrawingEntry(bookId: string, pngUri: string, prompt: string | null): Promise<void> {
+  return traced('action.addDrawingEntry', { bookId, prompt }, () => addDrawingEntryInner(bookId, pngUri, prompt));
+}
+
+async function addDrawingEntryInner(bookId: string, pngUri: string, prompt: string | null): Promise<void> {
+  const id = uuid();
+  const media_path = `${bookId}/${id}.png`;
+  const local = await keepFile(pngUri, dirs.media(), `drawing_${id}.png`);
+  rememberLocalMedia(media_path, local);
+  const entry: Entry = {
+    id,
+    book_id: bookId,
+    created_at: new Date().toISOString(),
+    kind: 'drawing',
+    text: null,
+    prompt,
+    media_path,
+    duration_ms: null,
+    transcript: null,
+    transcript_status: 'none',
+    pending: true,
+  };
+  markFresh(entry.id);
+  upsertEntry(entry);
+  enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
+}
+
+/** A drawing becomes the cover of a book that has none. Covers are never replaced once set. */
+export function setDrawnCover(bookId: string, pngUri: string): Promise<void> {
+  return traced('action.setDrawnCover', { bookId }, async () => {
+    const cover_path = `${bookId}.png`;
+    const local = await keepFile(pngUri, dirs.media(), `cover_${bookId}.png`);
+    rememberLocalMedia(cover_path, local);
+    patchBook(bookId, { cover_path });
+    enqueue({ id: uuid(), kind: 'cover', bookId, coverPath: cover_path, coverLocalUri: local, attempts: 0 });
+  });
+}
+
 export function addAudioEntry(
   bookId: string,
   audioUri: string,

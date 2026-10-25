@@ -4,6 +4,13 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
+## Unreleased
+
+- Drawing: a crayon on the book page opens a white square with seven crayons and undo; the
+  drawing lands in the stream like a photo, with its question above it.
+- A drawing can be a book's cover: a crayon under the cover slot when adding a book, or a tap on
+  the empty cover of a book that has none.
+
 ## Build 5 (2026-10-25, TestFlight)
 
 ### Update 01a173d8 (2026-10-25)

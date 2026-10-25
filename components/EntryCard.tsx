@@ -67,7 +67,7 @@ function TextBody({ entry }: { entry: Entry }) {
 function PhotoBody({ entry }: { entry: Entry }) {
   const uri = useMediaUri('media', entry.media_path);
   return (
-    <View style={styles.photo}>
+    <View style={[styles.photo, entry.kind === 'drawing' && styles.drawing]}>
       {uri ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
       ) : (
@@ -182,6 +182,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.pink },
   corner: { left: undefined, bottom: undefined, right: -8, top: -8, width: 16, height: 16 },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.pinkSoft },
+  drawing: { aspectRatio: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   player: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   playBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.pinkDeep, alignItems: 'center', justifyContent: 'center' },
   bars: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3, height: 28 },

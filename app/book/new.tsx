@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DrawingOverlay } from '@/components/DrawingOverlay';
 import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
 import { inspect } from '@/lib/machines/inspect';
@@ -60,6 +61,9 @@ export default function NewBook() {
               <Pressable onPress={() => send({ type: 'PICK', source: 'library' })} style={styles.coverBtn} accessibilityLabel="Välj bild">
                 <Icon name="photo" size={26} color={colors.pinkDeep} />
               </Pressable>
+              <Pressable onPress={() => send({ type: 'DRAW' })} style={styles.coverBtn} accessibilityLabel="Rita omslaget">
+                <Icon name="crayon" size={26} color={colors.pinkDeep} />
+              </Pressable>
             </View>
           </View>
         </View>
@@ -95,6 +99,7 @@ export default function NewBook() {
           placeholderTextColor={colors.pink}
         />
       </ScrollView>
+      <DrawingOverlay visible={state.matches('drawing')} prompt={null} onReroll={() => {}} onDone={(uri) => send({ type: 'DRAWING_DONE', uri })} />
     </KeyboardAvoidingView>
   );
 }

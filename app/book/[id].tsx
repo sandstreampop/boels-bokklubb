@@ -5,6 +5,7 @@ import { useCallback, useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DrawingOverlay } from '@/components/DrawingOverlay';
 import { EntryCard } from '@/components/EntryCard';
 import { RainbowFill, RainbowRing } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
@@ -32,9 +33,11 @@ export default function BookPage() {
   const complete = useStore(selectComplete(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
-  const { writePrompt, speakPrompt } = state.context;
+  const { writePrompt, speakPrompt, drawPrompt } = state.context;
   const recording = state.matches('recording');
   const writing = state.matches('writing');
+  const drawing = state.matches('drawing');
+  const drawingCover = state.matches('drawingCover');
   const photoSheet = state.matches('choosingPhoto');
   useScreen('book', { id, found: !!book });
 
@@ -49,7 +52,12 @@ export default function BookPage() {
       book ? (
         <View style={styles.header}>
           <View style={styles.coverRow}>
-            <View style={styles.coverWrap}>
+            <Pressable
+              style={styles.coverWrap}
+              disabled={!!book.cover_path}
+              onPress={() => send({ type: 'DRAW_COVER' })}
+              accessibilityRole="button"
+              accessibilityLabel="Rita omslaget">
               {complete && <RainbowRing width={COVER_W} height={COVER_H} radius={radius.md} />}
               <View style={styles.cover}>
                 {cover ? (
@@ -61,7 +69,7 @@ export default function BookPage() {
                   </>
                 )}
               </View>
-            </View>
+            </Pressable>
             <View style={styles.titleBlock}>
               <Text style={styles.title}>{book.title}</Text>
               {!!book.author && <Text style={styles.author}>{book.author}</Text>}
@@ -69,9 +77,10 @@ export default function BookPage() {
           </View>
           <StarRating value={book.rating} onChange={(n) => send({ type: 'RATE', rating: n })} size={52} />
           <View style={styles.actions}>
-            <RoundButton icon="mic" size={84} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
-            <RoundButton icon="pencil" size={84} color={colors.pink} label="Skriv" onPress={() => send({ type: 'START_WRITING' })} />
-            <RoundButton icon="camera" size={84} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
+            <RoundButton icon="mic" size={74} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
+            <RoundButton icon="pencil" size={74} color={colors.pink} label="Skriv" onPress={() => send({ type: 'START_WRITING' })} />
+            <RoundButton icon="camera" size={74} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
+            <RoundButton icon="crayon" size={74} color={colors.pink} label="Rita" onPress={() => send({ type: 'START_DRAWING' })} />
           </View>
         </View>
       ) : null,
@@ -118,6 +127,13 @@ export default function BookPage() {
         onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'speak' })}
       />
 
+      <DrawingOverlay
+        visible={drawing || drawingCover}
+        prompt={drawing ? drawPrompt : null}
+        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'draw' })}
+        onDone={(uri) => send(drawingCover ? { type: 'COVER_DONE', uri } : { type: 'DRAWING_DONE', uri })}
+      />
+
       <WriterOverlay
         bookId={id}
         visible={writing}
@@ -160,7 +176,7 @@ const styles = StyleSheet.create({
   titleBlock: { flex: 1, minWidth: 0, gap: 4, paddingBottom: 6 },
   title: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32, color: colors.text },
   author: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.muted },
-  actions: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingVertical: 4 },
+  actions: { flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 4 },
   back: { position: 'absolute', left: 20 },
   sheetBackdrop: {
     position: 'absolute',

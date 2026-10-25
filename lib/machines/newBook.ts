@@ -1,6 +1,7 @@
 // Adding a book: edit the fields, optionally pick a cover, save once.
 //
 //   editing ──PICK──▶ picking ──▶ editing     editing ──SAVE (title not empty)──▶ saving ──▶ saved
+//   editing ──DRAW──▶ drawing ──DRAWING_DONE(uri)──▶ editing (the drawing is the cover)
 //                                                                                   │ error
 //                                                                                   ▼
 //                                                                                editing
@@ -17,6 +18,8 @@ type Events =
   | { type: 'SET_TITLE'; title: string }
   | { type: 'SET_AUTHOR'; author: string }
   | { type: 'PICK'; source: 'camera' | 'library' }
+  | { type: 'DRAW' }
+  | { type: 'DRAWING_DONE'; uri: string | null }
   | { type: 'SAVE' };
 
 export const newBookMachine = setup({
@@ -40,8 +43,12 @@ export const newBookMachine = setup({
         SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
         SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
         PICK: 'picking',
+        DRAW: 'drawing',
         SAVE: { guard: 'canSave', target: 'saving' },
       },
+    },
+    drawing: {
+      on: { DRAWING_DONE: { target: 'editing', actions: assign({ coverUri: ({ event, context }) => event.uri ?? context.coverUri }) } },
     },
     picking: {
       invoke: {

@@ -25,6 +25,7 @@ import type { Book, Entry } from '@/lib/types';
 export type Job =
   | { id: string; kind: 'book'; book: Book; coverLocalUri: string | null; attempts: number }
   | { id: string; kind: 'rating'; bookId: string; rating: number; attempts: number }
+  | { id: string; kind: 'cover'; bookId: string; coverPath: string; coverLocalUri: string; attempts: number }
   | { id: string; kind: 'entry'; entry: Entry; mediaLocalUri: string | null; attempts: number };
 
 const KEY = 'bokklubb.outbox.v1';
@@ -91,6 +92,18 @@ async function runJob(job: Job): Promise<void> {
 
   if (job.kind === 'rating') {
     const { error } = await supabase.from('books').update({ rating: job.rating }).eq('id', job.bookId);
+    if (error) throw error;
+    return;
+  }
+
+  if (job.kind === 'cover') {
+    if (!fileExists(job.coverLocalUri)) {
+      warn('outbox.cover.missing', { bookId: job.bookId, uri: job.coverLocalUri });
+      return;
+    }
+    await uploadFile('covers', job.coverPath, job.coverLocalUri);
+    rememberLocalMedia(job.coverPath, job.coverLocalUri);
+    const { error } = await supabase.from('books').update({ cover_path: job.coverPath }).eq('id', job.bookId);
     if (error) throw error;
     return;
   }

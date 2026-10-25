@@ -3,12 +3,14 @@
 //   idle ──START_WRITING──▶ writing ──WRITING_DONE──▶ idle (fresh write prompt; the writer saved)
 //   idle ──OPEN_PHOTOS──▶ choosingPhoto ──PICK──▶ takingPhoto ──▶ idle
 //   idle ──START_RECORDING──▶ recording (fresh speak prompt) ──RECORDING_DONE──▶ savingAudio ──▶ idle
+//   idle ──START_DRAWING──▶ drawing (fresh draw prompt) ──DRAWING_DONE(uri)──▶ savingDrawing ──▶ idle
+//   idle ──DRAW_COVER──▶ drawingCover ──COVER_DONE(uri)──▶ savingCover ──▶ idle   (only while the book has no cover)
 //   idle ──RATE──▶ idle (rating is queued immediately)
 //   REROLL_PROMPT(pool) in any state swaps that pool's prompt; the one on screen at save time is stored.
 
 import { assign, fromPromise, setup } from 'xstate';
 
-import { addAudioEntry, addPhotoEntry, rateBook } from '@/lib/actions';
+import { addAudioEntry, addDrawingEntry, addPhotoEntry, rateBook, setDrawnCover } from '@/lib/actions';
 import { pickPhoto } from '@/lib/images';
 import { pickPrompt } from '@/lib/prompts';
 import { captureError, debug } from '@/lib/telemetry';
@@ -20,6 +22,8 @@ type Context = Input & {
   speakPrompt: string | null;
   /** The question on the writing screen. Picked when the page opens and after every writing. */
   writePrompt: string;
+  /** The question on the canvas. Picked when drawing starts. */
+  drawPrompt: string | null;
 };
 type Events =
   | { type: 'START_WRITING' }
@@ -30,6 +34,10 @@ type Events =
   | { type: 'START_RECORDING' }
   | { type: 'RECORDING_DONE'; uri: string; durationMs: number }
   | { type: 'RECORDING_UNAVAILABLE' }
+  | { type: 'START_DRAWING' }
+  | { type: 'DRAWING_DONE'; uri: string | null }
+  | { type: 'DRAW_COVER' }
+  | { type: 'COVER_DONE'; uri: string | null }
   | { type: 'REROLL_PROMPT'; pool: PromptPool }
   | { type: 'RATE'; rating: number };
 
@@ -40,6 +48,14 @@ export const bookMachine = setup({
       const uri = await pickPhoto(input.source);
       if (uri) await addPhotoEntry(input.bookId, uri);
       return !!uri;
+    }),
+    saveDrawing: fromPromise(async ({ input }: { input: { bookId: string; uri: string | null; prompt: string | null } }) => {
+      if (input.uri) await addDrawingEntry(input.bookId, input.uri, input.prompt);
+      return !!input.uri;
+    }),
+    saveCover: fromPromise(async ({ input }: { input: { bookId: string; uri: string | null } }) => {
+      if (input.uri) await setDrawnCover(input.bookId, input.uri);
+      return !!input.uri;
     }),
     saveAudio: fromPromise(({ input }: { input: { bookId: string; uri: string; durationMs: number; prompt: string | null } }) =>
       addAudioEntry(input.bookId, input.uri, input.durationMs, input.prompt),
@@ -53,6 +69,7 @@ export const bookMachine = setup({
       return {
         ...(event.pool === 'speak' ? { speakPrompt: next } : {}),
         ...(event.pool === 'write' ? { writePrompt: next } : {}),
+        ...(event.pool === 'draw' ? { drawPrompt: next } : {}),
       };
     }),
   },
@@ -62,6 +79,7 @@ export const bookMachine = setup({
     ...input,
     speakPrompt: null,
     writePrompt: pickPrompt('write'),
+    drawPrompt: null,
   }),
   initial: 'idle',
   on: {
@@ -78,6 +96,31 @@ export const bookMachine = setup({
         START_WRITING: 'writing',
         OPEN_PHOTOS: 'choosingPhoto',
         START_RECORDING: 'recording',
+        START_DRAWING: 'drawing',
+        DRAW_COVER: 'drawingCover',
+      },
+    },
+    drawing: {
+      entry: assign({ drawPrompt: () => pickPrompt('draw') }),
+      on: { DRAWING_DONE: 'savingDrawing' },
+    },
+    savingDrawing: {
+      invoke: {
+        src: 'saveDrawing',
+        input: ({ context, event }) => ({ bookId: context.bookId, uri: event.type === 'DRAWING_DONE' ? event.uri : null, prompt: context.drawPrompt }),
+        onDone: 'idle',
+        onError: { target: 'idle', actions: ({ event, context }) => captureError('book.addDrawing', event.error, { bookId: context.bookId }) },
+      },
+    },
+    drawingCover: {
+      on: { COVER_DONE: 'savingCover' },
+    },
+    savingCover: {
+      invoke: {
+        src: 'saveCover',
+        input: ({ context, event }) => ({ bookId: context.bookId, uri: event.type === 'COVER_DONE' ? event.uri : null }),
+        onDone: 'idle',
+        onError: { target: 'idle', actions: ({ event, context }) => captureError('book.drawCover', event.error, { bookId: context.bookId }) },
       },
     },
     writing: {

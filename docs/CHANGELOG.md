@@ -6,8 +6,6 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The keyboard opens in capitals everywhere she writes: the writing screen, the blank in a
-  fill-in question, a book's name and author, and the password. Still no autocorrect.
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so
@@ -17,6 +15,11 @@ open a book, record, write, draw, share a card.
 - The unicorn companion and its sounds are inside the app but not on stage yet.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
+
+### Update 01a1744f (2026-10-25)
+
+- The keyboard opens in capitals everywhere she writes: the writing screen, the blank in a
+  fill-in question, a book's name and author, and the password. Still no autocorrect.
 
 ### Update 01a1742c (2026-10-25)
 

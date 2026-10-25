@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from './Icon';
 import { PromptLine } from './Prompt';
+import { Squishy } from './Squishy';
 import { formatDuration } from '@/lib/format';
 import { info } from '@/lib/telemetry';
 import { inspect } from '@/lib/machines/inspect';
@@ -103,9 +104,9 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip
         </View>
         <View style={styles.center}>
           {ready ? (
-            <Pressable onPress={start} style={styles.recordBtn} accessibilityRole="button" accessibilityLabel="Spela in">
+            <Squishy onPress={start} sound={null} haptic={false} style={styles.recordBtn} accessibilityRole="button" accessibilityLabel="Spela in">
               <View style={styles.recordDot} />
-            </Pressable>
+            </Squishy>
           ) : (
             <>
               <Animated.View style={[styles.ring, pulseStyle]} />

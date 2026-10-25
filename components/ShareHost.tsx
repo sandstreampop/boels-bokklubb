@@ -36,7 +36,7 @@ export function ShareHost() {
             {uri && <Image source={{ uri }} style={{ width: imageW, height: imageW * 1.25, borderRadius: radius.md }} contentFit="contain" />}
           </View>
           <View style={styles.bar}>
-            <RoundButton icon="close" size={56} color={colors.pinkSoft} iconColor={colors.text} label="Avbryt" onPress={() => shareActor.send({ type: 'CANCEL' })} haptic={false} />
+            <RoundButton icon="close" size={56} color={colors.pinkSoft} iconColor={colors.text} label="Avbryt" onPress={() => shareActor.send({ type: 'CANCEL' })} haptic={false} sound={null} />
             <RoundButton icon="share" size={76} label="Dela" onPress={() => shareActor.send({ type: 'CONFIRM' })} disabled={sharing} />
           </View>
         </View>

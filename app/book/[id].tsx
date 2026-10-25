@@ -2,7 +2,8 @@ import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawingOverlay } from '@/components/DrawingOverlay';
@@ -10,12 +11,14 @@ import { EntryCard } from '@/components/EntryCard';
 import { RainbowFill, RainbowRing } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
+import { Squishy } from '@/components/Squishy';
 import { StarRating } from '@/components/StarRating';
 import { UNICORN } from '@/components/Unicorn';
 import { WriterOverlay } from '@/components/WriterOverlay';
 import { bookMachine } from '@/lib/machines/book';
 import { inspect } from '@/lib/machines/inspect';
 import { useMediaUri } from '@/lib/media';
+import { swishIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { selectBook, selectComplete, selectEntries, useStore } from '@/lib/store';
 import { pullEntries } from '@/lib/sync';
@@ -52,7 +55,7 @@ export default function BookPage() {
       book ? (
         <View style={styles.header}>
           <View style={styles.coverRow}>
-            <Pressable
+            <Squishy
               style={styles.coverWrap}
               disabled={!!book.cover_path}
               onPress={() => send({ type: 'DRAW_COVER' })}
@@ -69,7 +72,7 @@ export default function BookPage() {
                   </>
                 )}
               </View>
-            </Pressable>
+            </Squishy>
             <View style={styles.titleBlock}>
               <Text style={styles.title}>{book.title}</Text>
               {!!book.author && <Text style={styles.author}>{book.author}</Text>}
@@ -94,7 +97,7 @@ export default function BookPage() {
   }
 
   return (
-    <View style={styles.root}>
+    <Animated.View entering={swishIn()} style={styles.root}>
       <FlatList
         data={entries}
         keyExtractor={(e) => e.id}
@@ -115,6 +118,7 @@ export default function BookPage() {
         label="Tillbaka"
         onPress={() => router.back()}
         haptic={false}
+        sound={null}
         style={[styles.back, { top: insets.top + 8 }]}
       />
 
@@ -142,8 +146,7 @@ export default function BookPage() {
         onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
         onDone={() => send({ type: 'WRITING_DONE' })}
       />
-
-    </View>
+    </Animated.View>
   );
 }
 

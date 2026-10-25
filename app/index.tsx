@@ -1,11 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BookCard } from '@/components/BookCard';
 import { RainbowBar, RainbowRing } from '@/components/Rainbow';
 import { RoundButton } from '@/components/RoundButton';
+import { Squishy } from '@/components/Squishy';
 import { UNICORN } from '@/components/Unicorn';
 import { useScreen } from '@/lib/screen';
 import { selectCompleteCount, useStore } from '@/lib/store';
@@ -48,7 +49,7 @@ export default function Library() {
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + UNICORN.padding, gap: 26 }}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Pressable onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>
+            <Squishy onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>
               <Text style={styles.title}>Boels bokklubb</Text>
               {rainbowCount > 0 && (
                 <View style={styles.count}>
@@ -56,7 +57,7 @@ export default function Library() {
                   <Text style={styles.countText}>{rainbowCount}</Text>
                 </View>
               )}
-            </Pressable>
+            </Squishy>
             <RainbowBar style={{ width: 120, marginTop: 6 }} />
           </View>
         }

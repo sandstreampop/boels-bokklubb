@@ -2,12 +2,13 @@ import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawingOverlay } from '@/components/DrawingOverlay';
 import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
+import { Squishy } from '@/components/Squishy';
 import { UNICORN, Unicorn } from '@/components/Unicorn';
 import { inspect } from '@/lib/machines/inspect';
 import { newBookMachine } from '@/lib/machines/newBook';
@@ -44,6 +45,7 @@ export default function NewBook() {
             label="Stäng"
             onPress={() => router.back()}
             haptic={false}
+            sound={null}
           />
           <RoundButton icon="check" size={56} label="Spara" onPress={() => send({ type: 'SAVE' })} disabled={!canSave} />
         </View>
@@ -56,12 +58,12 @@ export default function NewBook() {
               <Icon name="photo" size={56} color={colors.pink} strokeWidth={1.8} />
             )}
             <View style={styles.coverButtons}>
-              <Pressable onPress={() => send({ type: 'PHOTO' })} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
+              <Squishy onPress={() => send({ type: 'PHOTO' })} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
                 <Icon name="camera" size={26} color={colors.pinkDeep} />
-              </Pressable>
-              <Pressable onPress={() => send({ type: 'DRAW' })} style={styles.coverBtn} accessibilityLabel="Rita omslaget">
+              </Squishy>
+              <Squishy onPress={() => send({ type: 'DRAW' })} style={styles.coverBtn} accessibilityLabel="Rita omslaget">
                 <Icon name="brush" size={26} color={colors.pinkDeep} />
-              </Pressable>
+              </Squishy>
             </View>
           </View>
         </View>

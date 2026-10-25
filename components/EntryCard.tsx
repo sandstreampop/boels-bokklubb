@@ -1,18 +1,19 @@
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import * as Haptics from 'expo-haptics';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { Icon } from './Icon';
 import { SparkBurst } from './SparkBurst';
+import { Squishy } from './Squishy';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
 import { startShare } from '@/lib/machines/share';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
+import { effectsAudioMode, voiceAudioMode } from '@/lib/sounds';
 import { takeFresh } from '@/lib/store';
-import { debug } from '@/lib/telemetry';
+import { captureError, debug } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Entry } from '@/lib/types';
 
@@ -32,10 +33,7 @@ export function EntryCard({ entry }: { entry: Entry }) {
   }, [fresh]);
 
   // The share button previews the card before the iOS share sheet opens (see lib/machines/share.ts).
-  const share = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    startShare({ kind: 'entry', entryId: entry.id, bookId: entry.book_id });
-  };
+  const share = () => startShare({ kind: 'entry', entryId: entry.id, bookId: entry.book_id });
 
   return (
     <View>
@@ -48,9 +46,9 @@ export function EntryCard({ entry }: { entry: Entry }) {
           <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
           <View style={styles.footerRight}>
             {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
-            <Pressable onPress={share} hitSlop={12} accessibilityRole="button" accessibilityLabel="Dela" style={styles.shareBtn}>
+            <Squishy onPress={share} hitSlop={12} accessibilityRole="button" accessibilityLabel="Dela" style={styles.shareBtn}>
               <Icon name="share" size={22} color={colors.pinkDeep} />
-            </Pressable>
+            </Squishy>
           </View>
         </View>
         {fresh && <SparkBurst burst={burst} radius={60} style={styles.corner} />}
@@ -132,13 +130,34 @@ function Player({ uri, durationMs, autoplay, entryId }: { uri: string; durationM
   const progress = total > 0 ? Math.min(1, (status.currentTime * 1000) / total) : 0;
   const playing = status.playing;
 
+  // Her words always play, ring switch or not: the voice mode goes on right before play and the
+  // effects mode comes back when she stops or the card goes away (decided, see lib/sounds.ts).
+  const voiceMode = useRef(false);
+  const playHers = () => {
+    voiceMode.current = true;
+    setAudioModeAsync(voiceAudioMode)
+      .catch((err) => captureError('entry.play.mode', err, { id: entryId }))
+      .then(() => player.play());
+  };
+  const restoreMode = () => {
+    if (!voiceMode.current) return;
+    voiceMode.current = false;
+    setAudioModeAsync(effectsAudioMode).catch((err) => captureError('entry.play.mode', err, { id: entryId }));
+  };
+  useEffect(() => {
+    if (!playing) restoreMode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => restoreMode, []);
+
   // The reward: her voice plays back once, as soon as the file is loaded. At the phone's volume.
   const played = useRef(false);
   useEffect(() => {
     if (!autoplay || played.current || !status.isLoaded) return;
     played.current = true;
     debug('entry.autoplay', { id: entryId, durationMs: total });
-    player.play();
+    playHers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoplay, status.isLoaded]);
 
@@ -150,14 +169,14 @@ function Player({ uri, durationMs, autoplay, entryId }: { uri: string; durationM
     if (status.didJustFinish || (total > 0 && progress >= 0.999)) {
       player.seekTo(0);
     }
-    player.play();
+    playHers();
   };
 
   return (
     <View style={styles.player}>
-      <Pressable onPress={toggle} style={styles.playBtn} accessibilityRole="button" accessibilityLabel={playing ? 'Pausa' : 'Spela'}>
+      <Squishy onPress={toggle} style={styles.playBtn} accessibilityRole="button" accessibilityLabel={playing ? 'Pausa' : 'Spela'}>
         <Icon name={playing ? 'pause' : 'play'} size={22} color={colors.white} />
-      </Pressable>
+      </Squishy>
       <Bars progress={progress} />
       <Text style={styles.time}>{formatDuration(playing || progress > 0 ? status.currentTime * 1000 : total)}</Text>
     </View>

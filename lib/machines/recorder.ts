@@ -11,6 +11,7 @@ import { AudioModule, type AudioRecorder, setAudioModeAsync } from 'expo-audio';
 import { assign, fromPromise, setup } from 'xstate';
 
 import { clearRecordingMarker, writeRecordingMarker } from '@/lib/recording';
+import { effectsAudioMode, micOpen } from '@/lib/sounds';
 import { captureError, info } from '@/lib/telemetry';
 
 const MAX_SECONDS = 10 * 60;
@@ -39,7 +40,8 @@ export const recorderMachine = setup({
       try {
         if (input.recorder.isRecording) await input.recorder.stop();
       } finally {
-        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+        // Back to the resting mode: effects obey the ring switch again (her recordings set their own).
+        await setAudioModeAsync(effectsAudioMode).catch(() => {});
       }
       return input.recorder.uri;
     }),
@@ -66,6 +68,8 @@ export const recorderMachine = setup({
   states: {
     idle: { on: { START: { target: 'permission', actions: assign({ prompt: ({ event }) => event.prompt }) } } },
     permission: {
+      // From the press on record until done, no effect plays: a pop would end up in her voice note.
+      entry: () => micOpen(true),
       invoke: {
         src: 'permission',
         onDone: [{ guard: ({ event }) => event.output, target: 'preparing' }, { target: 'unavailable' }],
@@ -111,12 +115,14 @@ export const recorderMachine = setup({
     },
     done: {
       entry: ({ context }) => {
+        micOpen(false);
         clearRecordingMarker();
         info('recording.done', { bookId: context.bookId, durationMs: context.durationMs, hasUri: !!context.uri });
       },
       on: { RESET: { target: 'idle', actions: assign({ uri: null, durationMs: 0, startedAt: 0 }) } },
     },
     unavailable: {
+      entry: () => micOpen(false),
       on: { RESET: 'idle' },
     },
   },

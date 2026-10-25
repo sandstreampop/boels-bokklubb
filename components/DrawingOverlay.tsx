@@ -1,7 +1,7 @@
 import { useMachine } from '@xstate/react';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -9,8 +9,10 @@ import { captureRef } from 'react-native-view-shot';
 
 import { PromptLine } from './Prompt';
 import { RoundButton } from './RoundButton';
+import { Squishy } from './Squishy';
 import { CRAYONS, drawingMachine } from '@/lib/machines/drawing';
 import { inspect } from '@/lib/machines/inspect';
+import { play } from '@/lib/sounds';
 import { colors, radius } from '@/lib/theme';
 
 const BRUSH = 10;
@@ -68,6 +70,7 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
     maxPointers: 1,
     shouldCancelWhenOutside: false,
     onBegin: (e) => {
+      play('crayon');
       live.current = `M ${pt(e.x, e.y)}`;
       setLiveD(live.current);
     },
@@ -107,12 +110,9 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
 
         <View style={styles.crayons}>
           {CRAYONS.map((c) => (
-            <Pressable
+            <Squishy
               key={c}
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => {});
-                send({ type: 'SET_COLOR', color: c });
-              }}
+              onPress={() => send({ type: 'SET_COLOR', color: c })}
               accessibilityRole="button"
               accessibilityLabel="Färg"
               hitSlop={6}

@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { RainbowFill, RainbowRing } from './Rainbow';
+import { Squishy } from './Squishy';
 import { useMediaUri } from '@/lib/media';
 import { selectComplete, useStore } from '@/lib/store';
 import { colors, fonts, radius } from '@/lib/theme';
@@ -15,7 +16,7 @@ export function BookCard({ book, onPress, width }: { book: Book; onPress: () => 
   const complete = useStore(selectComplete(book.id));
   const h = Math.round(width * 1.25);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={book.title} style={{ width }}>
+    <Squishy onPress={onPress} accessibilityRole="button" accessibilityLabel={book.title} style={{ width }}>
       {complete && <RainbowRing width={width} height={h} radius={radius.lg} />}
       <View style={[styles.cover, { width, height: h }]}>
         {cover ? (
@@ -39,7 +40,7 @@ export function BookCard({ book, onPress, width }: { book: Book; onPress: () => 
           ))}
         </View>
       )}
-    </Pressable>
+    </Squishy>
   );
 }
 

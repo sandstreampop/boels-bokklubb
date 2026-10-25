@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoundButton } from '@/components/RoundButton';
 import { StatTiles } from '@/components/StatTiles';
 import { UNICORN } from '@/components/Unicorn';
 import { startShare } from '@/lib/machines/share';
+import { swishIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { selectStats, useStore } from '@/lib/store';
 import { colors } from '@/lib/theme';
@@ -18,7 +20,7 @@ export default function StatsScreen() {
   useScreen('stats');
 
   return (
-    <View style={styles.root}>
+    <Animated.View entering={swishIn()} style={styles.root}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + UNICORN.padding }]}>
         <StatTiles stats={stats} />
       </ScrollView>
@@ -30,6 +32,7 @@ export default function StatsScreen() {
         label="Tillbaka"
         onPress={() => router.back()}
         haptic={false}
+        sound={null}
         style={[styles.back, { top: insets.top + 8 }]}
       />
       <RoundButton
@@ -41,7 +44,7 @@ export default function StatsScreen() {
         onPress={() => startShare({ kind: 'stats' })}
         style={[styles.share, { top: insets.top + 8 }]}
       />
-    </View>
+    </Animated.View>
   );
 }
 

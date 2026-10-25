@@ -13,6 +13,7 @@ import Animated, {
 
 import { Icon } from './Icon';
 import { SparkBurst } from './SparkBurst';
+import { play } from '@/lib/sounds';
 import { fonts } from '@/lib/theme';
 
 const WAND = 56;
@@ -104,6 +105,7 @@ export function Wand({ color, burst, onPress }: { color: string; burst: SharedVa
       hitSlop={10}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        play('wand');
         scale.set(withSequence(withSpring(0.8, { damping: 10, stiffness: 400 }), withSpring(1, { damping: 8, stiffness: 240 })));
         onPress();
       }}

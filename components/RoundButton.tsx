@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-nat
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { Icon, type IconName } from './Icon';
+import { play, type SoundName } from '@/lib/sounds';
 import { colors } from '@/lib/theme';
 
 type Props = {
@@ -15,9 +16,11 @@ type Props = {
   label: string;
   style?: StyleProp<ViewStyle>;
   haptic?: boolean;
+  /** The tap sound; null for a button whose screen change plays its own swish. */
+  sound?: SoundName | null;
 };
 
-/** The one button shape in the app: a circle with an icon. Squishes on press. */
+/** The one button shape in the app: a circle with an icon. Squishes on press, with a tick and a pop. */
 export function RoundButton({
   icon,
   onPress,
@@ -28,6 +31,7 @@ export function RoundButton({
   label,
   style,
   haptic = true,
+  sound = 'tap',
 }: Props) {
   const scale = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -44,6 +48,7 @@ export function RoundButton({
       }}
       onPress={() => {
         if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        if (sound) play(sound);
         onPress();
       }}
       hitSlop={8}

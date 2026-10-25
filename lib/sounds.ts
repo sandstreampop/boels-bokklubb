@@ -78,6 +78,12 @@ export const effectsAudioMode: Partial<AudioMode> = {
   interruptionMode: 'mixWithOthers',
 };
 
+/**
+ * Her own recordings play on silent, the effects do not (decided 2026-10-25). The entry player
+ * sets this right before it plays a voice note and restores `effectsAudioMode` when it stops.
+ */
+export const voiceAudioMode: Partial<AudioMode> = { ...effectsAudioMode, playsInSilentMode: true };
+
 const players = new Map<SoundName, AudioPlayer>();
 const reported = new Set<SoundName>();
 let started = false;

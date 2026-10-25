@@ -15,6 +15,8 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 
 import { SparkBurst } from './SparkBurst';
+import { useSquish } from '@/lib/motion';
+import { playStar } from '@/lib/sounds';
 import { colors } from '@/lib/theme';
 
 type Props = {
@@ -26,13 +28,14 @@ type Props = {
 const STAR_PATH =
   'M12 2.5l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.3l-6 3.3 1.3-6.6L2.4 9.4l6.7-.8L12 2.5z';
 
-/** 1 to 5 stars. Tapping a star fills up to it with a bounce, a sparkle burst and a haptic tick. */
+/** 1 to 5 stars. Tapping a star fills up to it with a bounce, a sparkle burst, a haptic tick and a tick that climbs with the level. */
 export function StarRating({ value, onChange, size = 44 }: Props) {
   const burst = useSharedValue(0);
   const burstIndex = useSharedValue(-1);
 
   const tap = (n: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    playStar(n);
     burstIndex.set(n - 1);
     burst.set(0);
     burst.set(withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) }));
@@ -70,6 +73,7 @@ type StarProps = {
 function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarProps) {
   const scale = useSharedValue(1);
   const fill = useSharedValue(filled ? 1 : 0);
+  const squish = useSquish();
 
   useEffect(() => {
     fill.set(withDelay(delay, withTiming(filled ? 1 : 0, { duration: 220 })));
@@ -90,11 +94,13 @@ function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarPr
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={squish.onPressIn}
+      onPressOut={squish.onPressOut}
       hitSlop={6}
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
       accessibilityLabel={`${index + 1} stjärnor`}>
       <SparkBurst burst={myBurst} radius={size * 0.95} />
-      <Animated.View style={[StyleSheet.absoluteFill, starStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, starStyle, squish.style]}>
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Path d={STAR_PATH} fill={colors.goldSoft} stroke={colors.gold} strokeWidth={1.2} strokeLinejoin="round" />
         </Svg>

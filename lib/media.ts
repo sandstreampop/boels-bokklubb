@@ -4,7 +4,7 @@
 import { File } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 
-import { dirs, fileExists } from './files';
+import { dirs, fileExists, rebase } from './files';
 import { getState, rememberLocalMedia, useStore } from './store';
 import { supabase } from './supabase';
 import { captureError, debug } from './telemetry';
@@ -17,7 +17,7 @@ function localNameFor(path: string) {
 
 export async function resolveMedia(bucket: 'covers' | 'media', path: string): Promise<string | null> {
   const known = getState().localMedia[path];
-  if (known && fileExists(known)) return known;
+  if (known && fileExists(known)) return rebase(known);
 
   const dest = new File(dirs.media(), localNameFor(path));
   if (dest.exists && dest.size > 0) {
@@ -52,7 +52,7 @@ export async function resolveMedia(bucket: 'covers' | 'media', path: string): Pr
 
 export function useMediaUri(bucket: 'covers' | 'media', path: string | null): string | null {
   const known = useStore((s) => (path ? s.localMedia[path] : undefined));
-  const [uri, setUri] = useState<string | null>(known ?? null);
+  const [uri, setUri] = useState<string | null>(known ? rebase(known) : null);
 
   useEffect(() => {
     let alive = true;
@@ -61,7 +61,7 @@ export function useMediaUri(bucket: 'covers' | 'media', path: string | null): st
       return;
     }
     if (known && fileExists(known)) {
-      setUri(known);
+      setUri(rebase(known));
       return;
     }
     resolveMedia(bucket, path).then((u) => {

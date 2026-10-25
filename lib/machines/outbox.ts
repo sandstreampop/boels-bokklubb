@@ -15,7 +15,7 @@ import { AppState } from 'react-native';
 import { assign, createActor, fromPromise, setup } from 'xstate';
 
 import { inspect } from './inspect';
-import { fileExists, mimeFor } from '@/lib/files';
+import { fileExists, mimeFor, rebase } from '@/lib/files';
 import { patchBook, patchEntry, rememberLocalMedia } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { captureError, debug, info, warn } from '@/lib/telemetry';
@@ -39,7 +39,7 @@ class NoSession extends Error {
 // ---- the work --------------------------------------------------------------------------------------
 
 async function uploadFile(bucket: 'covers' | 'media', path: string, localUri: string) {
-  const file = new File(localUri);
+  const file = new File(rebase(localUri));
   const buf = await file.arrayBuffer();
   const ext = path.split('.').pop() ?? '';
   const t0 = Date.now();

@@ -23,7 +23,7 @@ export function inspect(ev: InspectionEvent) {
   // Only the root machine of each actor system. Promise actors inside it also emit snapshots.
   if (ev.actorRef.sessionId !== ev.rootId) return;
   const snap = ev.snapshot as Snap;
-  const id = (ev.actorRef as { id?: string }).id ?? 'machine';
+  const id = (ev.actorRef as { logic?: { id?: string } }).logic?.id ?? (ev.actorRef as { id?: string }).id ?? 'machine';
   if (snap.status === 'error') {
     captureError(`machine.${id}`, snap.error, { event: ev.event.type, state: stateName(snap.value) });
     return;

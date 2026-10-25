@@ -16,9 +16,21 @@ export function ensureDir(d: Directory): Directory {
   return d;
 }
 
+/**
+ * iOS gives the app a new container path on every install and TestFlight update, but keeps the
+ * Documents folder's contents. Any absolute file uri we stored earlier must be rebased onto the
+ * current container before use. Every reader of a stored uri goes through this.
+ */
+export function rebase(uri: string): string {
+  const marker = '/Documents/';
+  const i = uri.indexOf(marker);
+  if (i < 0) return uri;
+  return new File(Paths.document, uri.slice(i + marker.length)).uri;
+}
+
 export function fileExists(uri: string): boolean {
   try {
-    return new File(uri).exists;
+    return new File(rebase(uri)).exists;
   } catch {
     return false;
   }
@@ -26,7 +38,7 @@ export function fileExists(uri: string): boolean {
 
 export function fileSize(uri: string): number {
   try {
-    return new File(uri).size ?? 0;
+    return new File(rebase(uri)).size ?? 0;
   } catch {
     return 0;
   }
@@ -34,7 +46,7 @@ export function fileSize(uri: string): number {
 
 /** Move a temp file (camera roll copy, recorder output) into our durable folder and return its new uri. */
 export async function keepFile(srcUri: string, dir: Directory, name: string): Promise<string> {
-  const src = new File(srcUri);
+  const src = new File(rebase(srcUri));
   const dest = new File(dir, name);
   if (dest.exists) dest.delete();
   try {
@@ -47,7 +59,7 @@ export async function keepFile(srcUri: string, dir: Directory, name: string): Pr
 
 export function deleteFile(uri: string): void {
   try {
-    const f = new File(uri);
+    const f = new File(rebase(uri));
     if (f.exists) f.delete();
   } catch {
     // ignore

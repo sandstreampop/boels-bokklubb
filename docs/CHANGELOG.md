@@ -6,6 +6,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+## 1.1.0 (build 8, 2026-10-25, TestFlight)
+
 What to test: inget nytt i appen; öppna webblänken på telefonen.
 
 - Boels bokklubb is on the web for relatives: a secret link and a four-digit code open the shelf,

@@ -11,7 +11,8 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 ## Product rules, decided with Viktor
 
 - Four screens only: library (grid of books, one plus button, the title opens the stats), add book
-  (title required, author and cover optional), book page (mic, pencil, camera, crayon, 1 to 5 star
+  (a three-step wizard, one thing per screen with a progress strip: picture, title, author; title
+  required, author and cover optional; no drawing here, a cover is drawn on the book page), book page (mic, pencil, camera, crayon, 1 to 5 star
   rating, stream of entries), stats (six totals, no time axis). Writing and drawing are full-screen
   modes like recording.
 - The stream is append-only. Nothing in the app edits or deletes. Fixes happen via Supabase.

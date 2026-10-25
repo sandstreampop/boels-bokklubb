@@ -22,7 +22,9 @@ export type IconName =
   | 'book'
   | 'brush'
   | 'undo'
-  | 'share';
+  | 'share'
+  | 'next'
+  | 'person';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -31,6 +33,18 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
   const common = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'next' && (
+        <>
+          <Line x1={5} y1={12} x2={19} y2={12} {...common} />
+          <Path d="M13 6l6 6-6 6" {...common} />
+        </>
+      )}
+      {name === 'person' && (
+        <>
+          <Circle cx={12} cy={8} r={4} {...common} />
+          <Path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" {...common} />
+        </>
+      )}
       {name === 'plus' && (
         <>
           <Line x1={12} y1={5} x2={12} y2={19} {...common} />

@@ -1,27 +1,35 @@
-// Adding a book: edit the fields, optionally pick a cover, save once.
+// Adding a book, as a wizard: one thing per screen, so she can focus. A picture first (the camera,
+// never the gallery; drawing a cover belongs to the book page), then the title, then the author.
 //
-//   editing ──PHOTO──▶ picking (camera) ──▶ editing     editing ──SAVE (title not empty)──▶ saving ──▶ saved
-//   editing ──DRAW──▶ drawing ──DRAWING_DONE(uri)──▶ editing (the drawing is the cover)
-//                                                                                   │ error
-//                                                                                   ▼
-//                                                                                editing
+//   picture ──PHOTO──▶ picking (camera) ──▶ picture      picture ──NEXT──▶ title (with or without a photo)
+//   title ──NEXT (title not empty)──▶ author              title ──BACK──▶ picture
+//   author ──NEXT──▶ saving ──▶ saved                      author ──BACK──▶ title
+//                      │ error                            CLOSE from any step ──▶ closed
+//                      ▼
+//                    author
+//
+// Title required, author and cover optional (product rule). The step is the state; the screen
+// renders the one that is active and a progress strip above it.
 
 import { assign, fromPromise, setup } from 'xstate';
 
 import { addBook } from '@/lib/actions';
 import { takePhoto } from '@/lib/images';
-import { setUnicornPose } from '@/lib/machines/unicorn';
+import { play } from '@/lib/sounds';
 import { captureError } from '@/lib/telemetry';
 import type { Book } from '@/lib/types';
+
+export const STEPS = ['picture', 'title', 'author'] as const;
+export type Step = (typeof STEPS)[number];
 
 type Context = { title: string; author: string; coverUri: string | null; book: Book | null };
 type Events =
   | { type: 'SET_TITLE'; title: string }
   | { type: 'SET_AUTHOR'; author: string }
   | { type: 'PHOTO' }
-  | { type: 'DRAW' }
-  | { type: 'DRAWING_DONE'; uri: string | null }
-  | { type: 'SAVE' };
+  | { type: 'NEXT' }
+  | { type: 'BACK' }
+  | { type: 'CLOSE' };
 
 export const newBookMachine = setup({
   types: { context: {} as Context, events: {} as Events },
@@ -32,32 +40,42 @@ export const newBookMachine = setup({
     ),
   },
   guards: {
-    canSave: ({ context }) => context.title.trim().length > 0,
+    hasTitle: ({ context }) => context.title.trim().length > 0,
+  },
+  actions: {
+    /** Each step arrives like a screen: the swish. */
+    stepIn: () => play('screen-in'),
   },
 }).createMachine({
   id: 'newBook',
   context: { title: '', author: '', coverUri: null, book: null },
-  initial: 'editing',
+  initial: 'picture',
+  on: { CLOSE: '.closed' },
   states: {
-    editing: {
-      entry: () => setUnicornPose('home'),
-      on: {
-        SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
-        SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
-        PHOTO: 'picking',
-        DRAW: 'drawing',
-        SAVE: { guard: 'canSave', target: 'saving' },
-      },
-    },
-    drawing: {
-      entry: () => setUnicornPose('drawing'),
-      on: { DRAWING_DONE: { target: 'editing', actions: assign({ coverUri: ({ event, context }) => event.uri ?? context.coverUri }) } },
+    picture: {
+      on: { PHOTO: 'picking', NEXT: 'title' },
     },
     picking: {
       invoke: {
         src: 'pick',
-        onDone: { target: 'editing', actions: assign({ coverUri: ({ event, context }) => event.output ?? context.coverUri }) },
-        onError: { target: 'editing', actions: ({ event }) => captureError('book.new.pick', event.error) },
+        onDone: { target: 'picture', actions: assign({ coverUri: ({ event, context }) => event.output ?? context.coverUri }) },
+        onError: { target: 'picture', actions: ({ event }) => captureError('book.new.pick', event.error) },
+      },
+    },
+    title: {
+      entry: 'stepIn',
+      on: {
+        SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
+        NEXT: { guard: 'hasTitle', target: 'author' },
+        BACK: 'picture',
+      },
+    },
+    author: {
+      entry: 'stepIn',
+      on: {
+        SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
+        NEXT: 'saving',
+        BACK: 'title',
       },
     },
     saving: {
@@ -65,9 +83,10 @@ export const newBookMachine = setup({
         src: 'save',
         input: ({ context }) => context,
         onDone: { target: 'saved', actions: assign({ book: ({ event }) => event.output }) },
-        onError: { target: 'editing', actions: ({ event, context }) => captureError('book.new.save', event.error, { hasCover: !!context.coverUri }) },
+        onError: { target: 'author', actions: ({ event, context }) => captureError('book.new.save', event.error, { hasCover: !!context.coverUri }) },
       },
     },
     saved: { type: 'final' },
+    closed: { type: 'final' },
   },
 });

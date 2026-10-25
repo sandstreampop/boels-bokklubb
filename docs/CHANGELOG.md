@@ -6,6 +6,10 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- Adding a book is three screens, one thing at a time, with a row of three circles showing where
+  she is: take a picture of the book (or go on without one), write its name, write who made it.
+  Each step swishes in; the arrow goes on, the check at the end saves.
+
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so

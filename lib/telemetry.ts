@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import { File } from 'expo-file-system';
+import * as Updates from 'expo-updates';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
 import { dirs } from './files';
@@ -87,6 +88,9 @@ export function appContext() {
     os: `${Platform.OS} ${Device.osVersion ?? String(Platform.Version)}`,
     device: Device.modelName,
     dev: __DEV__,
+    /** Which over-the-air update is running; null means the bundle embedded in the build. */
+    update: Updates.isEmbeddedLaunch ? null : Updates.updateId,
+    runtime: Updates.runtimeVersion,
   };
 }
 

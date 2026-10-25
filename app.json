@@ -94,6 +94,14 @@
         }
       }
     },
-    "owner": "visaros-team"
+    "owner": "visaros-team",
+    "updates": {
+      "url": "https://u.expo.dev/5424f273-be34-41f5-9212-bbbc5382f0bb",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 3000
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    }
   }
 }

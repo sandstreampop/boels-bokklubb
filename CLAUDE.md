@@ -71,7 +71,8 @@ TestFlight build without any JS error.
     npm run logs        # tail app telemetry (--since 2h, --level warn, --session <id>, --sessions, --follow)
     npm run migrate     # apply supabase/migrations through the Management API
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
-    npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit from the secrets, no prompts
+    npm run update      # JS-only change over the air to installed builds, about a minute
+    npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit, about 25 minutes, native changes only
 
 Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own.
 
@@ -90,5 +91,8 @@ refresh workflow has no secrets until Viktor adds `EXPO_TOKEN`, `ASC_KEY_ID`, `A
 `ASC_KEY_P8_BASE64` by hand in the repo's Settings → Secrets and variables → Actions (or runs
 `node scripts/setup.mjs github` from a machine where `gh` is logged in).
 
-New builds: `npm run build:ios`, or `eas submit --platform ios --profile production --latest` to
-resubmit a finished build. Signing is already set up, so no interactive prompts are needed.
+Shipping: `npm run update` for anything in app/, components/, lib/ or assets (EAS Update, channel
+`production`, runtime version is a fingerprint of the native project). `npm run build:ios` only when
+package.json gains a native module, app.json changes or the SDK moves. Signing is already set up.
+The app checks for an update on every launch and waits up to 3 s for it, so a fix is live on the
+phone after one relaunch; `npm run logs` shows the running update id in the `app` column.

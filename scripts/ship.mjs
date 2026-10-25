@@ -2,9 +2,15 @@
 // Builds iOS on EAS and submits to TestFlight, non-interactively, from the environment secrets.
 // Signing credentials already exist on EAS (created once by scripts/setup.mjs eas).
 //
-//   npm run build:ios                 build, submit, wait for both
+//   npm run build:ios                 native build, submit, wait for both (about 25 minutes)
 //   npm run build:ios -- --no-wait    return as soon as the build is queued
+//   npm run update                    JS-only change over the air to the production channel (about a minute)
+//   npm run update -- --message "…"   custom message; default is the last commit subject
 //   node scripts/ship.mjs submit      resubmit the latest finished build
+//
+// Use update for anything in app/, components/, lib/ and assets. Use build:ios when package.json
+// gains a native module, app.json changes, or the Expo SDK moves: the runtime version is a
+// fingerprint of the native project, so an update is only served to builds it matches.
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -31,10 +37,27 @@ const env = {
 };
 
 const [mode = 'build', ...rest] = process.argv.slice(2);
+const lastCommit = () => {
+  const r = spawnSync('git', ['log', '-1', '--pretty=%s'], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout.trim() : 'update';
+};
 const eas =
   mode === 'submit'
     ? ['submit', '--platform', 'ios', '--profile', 'production', '--latest', '--non-interactive', ...rest]
-    : ['build', '--platform', 'ios', '--profile', 'production', '--auto-submit', '--non-interactive', ...rest];
+    : mode === 'update'
+      ? [
+          'update',
+          '--channel',
+          'production',
+          '--environment',
+          'production',
+          '--platform',
+          'ios',
+          '--non-interactive',
+          ...(rest.includes('--message') ? [] : ['--message', lastCommit()]),
+          ...rest,
+        ]
+      : ['build', '--platform', 'ios', '--profile', 'production', '--auto-submit', '--non-interactive', ...rest];
 
 const r = spawnSync('npx', ['eas-cli@latest', ...eas], { stdio: 'inherit', env });
 process.exit(r.status ?? 1);

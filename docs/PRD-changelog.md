@@ -30,6 +30,25 @@ updates. Writing the entry is part of shipping, not an afterthought.
 6. `npm run logs -- --sessions` already prints the build and the running update id, so a line in
    the changelog can be matched to what a phone is running.
 
+## Version numbers
+
+The app has sat at 1.0.0 since build 1. From build 6 on, every native build is a new version:
+
+- `npm run build:ios` bumps the minor of `expo.version` in app.json before building: build 6 is
+  1.1.0, build 7 is 1.2.0. Major stays 1 until Viktor says otherwise. The script commits the bump
+  together with the changelog section (`Changelog: 1.1.0 (build 6)`). The build number keeps
+  auto-incrementing on EAS as today.
+- Over-the-air updates cannot change the version a phone shows, so they do not bump it. They are
+  listed under the version they belong to as `### Update <id>`, and the update message is prefixed
+  with the version (`1.1.0: …`) so the EAS dashboard reads the same way.
+- The bump happens only at native build time, never between builds: the runtime version is a
+  fingerprint that includes app.json, so a version change in the working tree would stop updates
+  from reaching the installed build until the next native build.
+- TestFlight shows version and build on the install screen, so Viktor can match them to the
+  changelog without opening the repo. Nothing in the app shows a version; no explaining prose.
+- Changelog section titles become `## 1.1.0 (build 6, date, TestFlight)`; the existing 1.0.0
+  sections stay as they are.
+
 ## Writing rules
 
 - Lines are for Viktor and relatives, one sentence each, no file names, no machine names.
@@ -38,6 +57,6 @@ updates. Writing the entry is part of shipping, not an afterthought.
 
 ## Done means
 
-An entry cannot be forgotten (the scripts refuse), TestFlight shows the section for the next native
-build without anyone pasting it, and the changelog has a section for every build and update that
+An entry cannot be forgotten (the scripts refuse), every native build has a new version number and
+TestFlight shows the section for it without anyone pasting it, and the changelog has a section for every build and update that
 exists on EAS as of the implementing session, back-filled from `docs/CHANGELOG.md` as it stands.

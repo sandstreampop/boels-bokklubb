@@ -42,8 +42,10 @@ in the same fix. The first instance: `app.config.ts` throws without `EXPO_PUBLIC
 `EXPO_PUBLIC_SUPABASE_ANON_KEY`, because `eas update --environment production` ignores the
 committed `.env` and reads EAS environment variables (two updates shipped without them on
 2026-10-25). `scripts/setup.mjs env` keeps `.env` and the EAS variables for production, preview and
-development in step; before publishing, `EXPO_NO_DOTENV=1 npx eas-cli env:exec production "npx expo
-export --platform ios"` and a grep for `supabase.co` in `dist/` prove the bundle.
+development in step; before publishing, `node scripts/eas.mjs env:exec production "npx expo export
+--platform ios"` and a grep for `supabase.co` in `dist/` prove the bundle, and `node scripts/eas.mjs
+env:exec production env | grep EXPO_PUBLIC_SUPABASE_URL` proves EAS holds the value (eas-cli needs
+.env to evaluate the config at all, which is what the wrapper provides).
 
 ## Architecture: state machines first
 

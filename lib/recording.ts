@@ -7,7 +7,7 @@ import { addAudioEntry } from './actions';
 import { dirs, fileExists, fileSize } from './files';
 import { captureError, info } from './telemetry';
 
-type Marker = { bookId: string; uri: string; startedAt: string };
+type Marker = { bookId: string; uri: string; startedAt: string; prompt?: string | null };
 
 function markerFile() {
   return new File(dirs.root(), 'recording-in-progress.json');
@@ -47,7 +47,7 @@ export async function recoverStrandedRecording(): Promise<boolean> {
     const startedAt = new Date(m.startedAt).getTime();
     const durationMs = Math.max(1000, Math.min(Date.now() - startedAt, 15 * 60 * 1000));
     info('recording.recover', { bookId: m.bookId, size, durationMs, startedAt: m.startedAt });
-    await addAudioEntry(m.bookId, m.uri, durationMs, m.startedAt);
+    await addAudioEntry(m.bookId, m.uri, durationMs, m.prompt ?? null, m.startedAt);
     return true;
   } catch (err) {
     captureError('recording.recover', err);

@@ -42,17 +42,18 @@ export function rateBook(bookId: string, rating: number): Promise<void> {
   });
 }
 
-export function addTextEntry(bookId: string, text: string): Promise<void> {
-  return traced('action.addTextEntry', { bookId, chars: text.length }, () => addTextEntryInner(bookId, text));
+export function addTextEntry(bookId: string, text: string, prompt: string | null): Promise<void> {
+  return traced('action.addTextEntry', { bookId, chars: text.length, prompt }, () => addTextEntryInner(bookId, text, prompt));
 }
 
-async function addTextEntryInner(bookId: string, text: string): Promise<void> {
+async function addTextEntryInner(bookId: string, text: string, prompt: string | null): Promise<void> {
   const entry: Entry = {
     id: uuid(),
     book_id: bookId,
     created_at: new Date().toISOString(),
     kind: 'text',
     text,
+    prompt,
     media_path: null,
     duration_ms: null,
     transcript: null,
@@ -79,6 +80,7 @@ async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<voi
     created_at: new Date().toISOString(),
     kind: 'photo',
     text: null,
+    prompt: null,
     media_path,
     duration_ms: null,
     transcript: null,
@@ -89,13 +91,25 @@ async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<voi
   enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }
 
-export function addAudioEntry(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
-  return traced('action.addAudioEntry', { bookId, durationMs, recovered: !!createdAt }, () =>
-    addAudioEntryInner(bookId, audioUri, durationMs, createdAt),
+export function addAudioEntry(
+  bookId: string,
+  audioUri: string,
+  durationMs: number,
+  prompt: string | null,
+  createdAt?: string,
+): Promise<void> {
+  return traced('action.addAudioEntry', { bookId, durationMs, prompt, recovered: !!createdAt }, () =>
+    addAudioEntryInner(bookId, audioUri, durationMs, prompt, createdAt),
   );
 }
 
-async function addAudioEntryInner(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
+async function addAudioEntryInner(
+  bookId: string,
+  audioUri: string,
+  durationMs: number,
+  prompt: string | null,
+  createdAt?: string,
+): Promise<void> {
   const id = uuid();
   const ext = extensionOf(audioUri, 'm4a');
   const media_path = `${bookId}/${id}.${ext}`;
@@ -107,6 +121,7 @@ async function addAudioEntryInner(bookId: string, audioUri: string, durationMs: 
     created_at: createdAt ?? new Date().toISOString(),
     kind: 'audio',
     text: null,
+    prompt,
     media_path,
     duration_ms: durationMs,
     transcript: null,

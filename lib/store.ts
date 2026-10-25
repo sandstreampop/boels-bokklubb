@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createStore } from '@xstate/store';
 
 import { captureError, info } from './telemetry';
-import type { Book, Entry } from './types';
+import type { Book, Entry, PromptPool } from './types';
 
 export type StoreContext = {
   books: Book[];
@@ -19,6 +19,8 @@ export type StoreContext = {
   entries: Record<string, Entry[]>;
   /** media_path -> local file uri for files this device created or downloaded */
   localMedia: Record<string, string>;
+  /** Index of the prompt shown last, per pool, so the next pick is never the same one. */
+  lastPrompt: Partial<Record<PromptPool, number>>;
   loaded: boolean;
 };
 
@@ -31,13 +33,17 @@ export const sortEntries = (entries: Entry[]) => [...entries].sort((a, b) => (a.
 export const NO_ENTRIES: Entry[] = [];
 
 export const store = createStore({
-  context: { books: [], entries: {}, localMedia: {}, loaded: false } as StoreContext,
+  context: { books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: false } as StoreContext,
   on: {
-    hydrate: (ctx, e: { books: Book[]; entries: Record<string, Entry[]>; localMedia: Record<string, string> }) => ({
+    hydrate: (
+      ctx,
+      e: { books: Book[]; entries: Record<string, Entry[]>; localMedia: Record<string, string>; lastPrompt: Partial<Record<PromptPool, number>> },
+    ) => ({
       ...ctx,
       books: e.books,
       entries: e.entries,
       localMedia: e.localMedia,
+      lastPrompt: e.lastPrompt,
       loaded: true,
     }),
     upsertBook: (ctx, e: { book: Book }) => ({
@@ -74,7 +80,11 @@ export const store = createStore({
         entries: { ...ctx.entries, [e.bookId]: sortEntries([...e.rows.map((r) => ({ ...r, pending: false })), ...pending]) },
       };
     },
-    clear: () => ({ books: [], entries: {}, localMedia: {}, loaded: true }),
+    rememberPrompt: (ctx, e: { pool: PromptPool; index: number }) => ({
+      ...ctx,
+      lastPrompt: { ...ctx.lastPrompt, [e.pool]: e.index },
+    }),
+    clear: () => ({ books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: true }),
   },
 });
 
@@ -99,6 +109,7 @@ export const patchEntry = (bookId: string, id: string, patch: Partial<Entry>) =>
 export const rememberLocalMedia = (mediaPath: string, localUri: string) => store.trigger.rememberLocalMedia({ mediaPath, localUri });
 export const mergeBooksFromServer = (rows: Book[]) => store.trigger.mergeBooks({ rows });
 export const mergeEntriesFromServer = (bookId: string, rows: Entry[]) => store.trigger.mergeEntries({ bookId, rows });
+export const rememberPrompt = (pool: PromptPool, index: number) => store.trigger.rememberPrompt({ pool, index });
 
 // ---- persistence -----------------------------------------------------------------------------------
 
@@ -132,6 +143,11 @@ export async function loadState(): Promise<void> {
   } catch (err) {
     captureError('store.load', err);
   }
-  store.trigger.hydrate({ books: parsed.books ?? [], entries: parsed.entries ?? {}, localMedia: parsed.localMedia ?? {} });
+  store.trigger.hydrate({
+    books: parsed.books ?? [],
+    entries: parsed.entries ?? {},
+    localMedia: parsed.localMedia ?? {},
+    lastPrompt: parsed.lastPrompt ?? {},
+  });
   info('store.loaded', { books: getState().books.length, cached: Object.keys(parsed).length > 0 });
 }

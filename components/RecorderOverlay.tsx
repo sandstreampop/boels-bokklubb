@@ -7,6 +7,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from './Icon';
+import { PromptLine } from './Prompt';
 import { formatDuration } from '@/lib/format';
 import { inspect } from '@/lib/machines/inspect';
 import { recorderMachine } from '@/lib/machines/recorder';
@@ -18,6 +19,9 @@ type Props = {
   /** Called with the finished file. Never called with nothing: there is no cancel. */
   onDone: (uri: string, durationMs: number) => void;
   onUnavailable: () => void;
+  /** The question she is answering, shown under the timer. The wand asks the owner for a new one. */
+  prompt: string | null;
+  onReroll: () => void;
 };
 
 /**
@@ -25,7 +29,7 @@ type Props = {
  * tap anywhere stops and saves. Backgrounding keeps recording (background audio mode), and a marker
  * file means a crash still produces an entry on next launch.
  */
-export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Props) {
+export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, prompt, onReroll }: Props) {
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: 'document' });
   const status = useAudioRecorderState(recorder, 250);
   const insets = useSafeAreaInsets();
@@ -40,7 +44,8 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
 
   // Opening the overlay starts the machine. START is only accepted in idle, so this cannot double-start.
   useEffect(() => {
-    if (visible) send({ type: 'START' });
+    if (visible) send({ type: 'START', prompt });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, send]);
 
   // Pulse and tick once we are really recording.
@@ -83,7 +88,12 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
         style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 }]}
         onPress={stop}
         accessibilityLabel="Stoppa och spara">
-        <Text style={styles.timer}>{formatDuration(seconds * 1000)}</Text>
+        <View style={styles.top}>
+          <Text style={styles.timer}>{formatDuration(seconds * 1000)}</Text>
+          {prompt !== null && (
+            <PromptLine prompt={prompt} onReroll={onReroll} color={colors.white} wandColor={colors.white} size={30} align="center" style={styles.prompt} />
+          )}
+        </View>
         <View style={styles.center}>
           <Animated.View style={[styles.ring, pulseStyle]} />
           <View style={styles.micCircle}>
@@ -101,7 +111,9 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.pinkDeep, alignItems: 'center', justifyContent: 'space-between' },
+  top: { alignItems: 'center', gap: 10, paddingHorizontal: 22, width: '100%' },
   timer: { fontFamily: fonts.display, fontSize: 56, color: colors.white, fontVariant: ['tabular-nums'] },
+  prompt: { width: '100%' },
   center: { width: 260, height: 260, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.35)' },
   micCircle: { width: 180, height: 180, borderRadius: 90, backgroundColor: colors.pink, alignItems: 'center', justifyContent: 'center' },

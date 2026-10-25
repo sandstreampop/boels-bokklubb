@@ -17,7 +17,8 @@ export type IconName =
   | 'pencil'
   | 'unicorn'
   | 'lock'
-  | 'refresh';
+  | 'refresh'
+  | 'wand';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -84,6 +85,14 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
         <>
           <Path d="M4 20l4-1 11-11-3-3L5 16z" {...common} />
           <Line x1={13} y1={8} x2={16} y2={11} {...common} />
+        </>
+      )}
+      {name === 'wand' && (
+        <>
+          <Line x1={4} y1={20} x2={14.5} y2={9.5} {...common} strokeWidth={strokeWidth + 0.8} />
+          <Path d="M17.5 3.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill={color} stroke={color} strokeWidth={0.6} strokeLinejoin="round" />
+          <Circle cx={21} cy={11.5} r={1.4} fill={color} />
+          <Circle cx={12.5} cy={4.5} r={1.1} fill={color} />
         </>
       )}
       {name === 'lock' && (

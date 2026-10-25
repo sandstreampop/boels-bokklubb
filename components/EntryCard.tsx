@@ -5,20 +5,42 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon } from './Icon';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
+import { isFillIn, splitFillIn } from '@/lib/prompts';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Entry } from '@/lib/types';
 
 export function EntryCard({ entry }: { entry: Entry }) {
   return (
     <View style={styles.card}>
-      {entry.kind === 'text' && <Text style={styles.body}>{entry.text}</Text>}
-      {entry.kind === 'photo' && <PhotoBody entry={entry} />}
+      {entry.kind !== 'text' && !!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
+      {entry.kind === 'text' && <TextBody entry={entry} />}
+      {(entry.kind === 'photo' || entry.kind === 'drawing') && <PhotoBody entry={entry} />}
       {entry.kind === 'audio' && <AudioBody entry={entry} />}
       <View style={styles.footer}>
         <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
         {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
       </View>
     </View>
+  );
+}
+
+/** Her words. A fill-in prompt is rendered around them; any other prompt sits above in the muted style. */
+function TextBody({ entry }: { entry: Entry }) {
+  if (isFillIn(entry.prompt)) {
+    const { before, after } = splitFillIn(entry.prompt);
+    return (
+      <Text style={styles.body}>
+        <Text style={styles.promptInline}>{before}</Text>
+        {entry.text}
+        <Text style={styles.promptInline}>{after}</Text>
+      </Text>
+    );
+  }
+  return (
+    <>
+      {!!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
+      <Text style={styles.body}>{entry.text}</Text>
+    </>
   );
 }
 
@@ -119,6 +141,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   body: { fontFamily: fonts.body, fontSize: 19, lineHeight: 27, color: colors.text },
+  prompt: { fontFamily: fonts.bodySemi, fontSize: 15, lineHeight: 20, color: colors.muted },
+  promptInline: { color: colors.muted },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   date: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.muted },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.pink },

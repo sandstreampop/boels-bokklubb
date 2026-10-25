@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EntryCard } from '@/components/EntryCard';
+import { PromptLine } from '@/components/Prompt';
 import { RainbowFill } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
@@ -36,7 +37,7 @@ export default function BookPage() {
   const entries = useStore(selectEntries(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
-  const text = state.context.text;
+  const { text, writePrompt, speakPrompt } = state.context;
   const recording = state.matches('recording');
   const photoSheet = state.matches('choosingPhoto');
   useScreen('book', { id, found: !!book });
@@ -69,6 +70,16 @@ export default function BookPage() {
           </View>
           <StarRating value={book.rating} onChange={(n) => send({ type: 'RATE', rating: n })} size={52} />
           <View style={styles.composer}>
+            {/* The prompt is the placeholder: it sits over the empty input and the wand swaps it. */}
+            <PromptLine
+              prompt={writePrompt}
+              onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
+              color={colors.pink}
+              wandColor={colors.pink}
+              size={20}
+              textStyle={[styles.placeholder, text.length > 0 && styles.placeholderHidden]}
+              style={styles.promptRow}
+            />
             <TextInput
               id="entry-text"
               style={styles.input}
@@ -79,8 +90,6 @@ export default function BookPage() {
               spellCheck={false}
               autoCapitalize="none"
               autoComplete="off"
-              placeholder="Skriv här"
-              placeholderTextColor={colors.pink}
               maxLength={4000}
             />
             {text.trim().length > 0 && (
@@ -94,7 +103,7 @@ export default function BookPage() {
         </View>
       ) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [book, cover, text],
+    [book, cover, text, writePrompt],
   );
 
   if (!book || !id) {
@@ -133,6 +142,8 @@ export default function BookPage() {
         visible={recording}
         onDone={(uri, durationMs) => send({ type: 'RECORDING_DONE', uri, durationMs })}
         onUnavailable={() => send({ type: 'RECORDING_UNAVAILABLE' })}
+        prompt={speakPrompt}
+        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'speak' })}
       />
 
       {photoSheet && (
@@ -173,13 +184,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 16,
     paddingRight: 64,
-    minHeight: 96,
+    minHeight: 110,
     shadowColor: '#E9679B',
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
   },
   input: { fontFamily: fonts.body, fontSize: 20, lineHeight: 28, color: colors.text, minHeight: 60, textAlignVertical: 'top' },
+  promptRow: { position: 'absolute', left: 16, right: 8, top: 10, zIndex: 1 },
+  placeholder: { fontFamily: fonts.body, paddingTop: 4 },
+  placeholderHidden: { opacity: 0 },
   sendBtn: { position: 'absolute', right: 10, bottom: 10 },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 28, paddingVertical: 4 },
   back: { position: 'absolute', left: 20 },

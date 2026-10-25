@@ -55,6 +55,7 @@ function rowOf(e: Entry) {
     created_at: e.created_at,
     kind: e.kind,
     text: e.text,
+    prompt: e.prompt,
     media_path: e.media_path,
     duration_ms: e.duration_ms,
     transcript_status: e.kind === 'audio' ? 'pending' : 'none',

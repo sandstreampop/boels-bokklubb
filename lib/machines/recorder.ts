@@ -16,8 +16,12 @@ import { captureError, info } from '@/lib/telemetry';
 const MAX_SECONDS = 10 * 60;
 
 type Input = { bookId: string; recorder: AudioRecorder };
-type Context = Input & { startedAt: number; uri: string | null; durationMs: number };
-type Events = { type: 'START' } | { type: 'STOP' } | { type: 'AUTO_STOPPED'; durationMs: number } | { type: 'RESET' };
+type Context = Input & { startedAt: number; uri: string | null; durationMs: number; prompt: string | null };
+type Events =
+  | { type: 'START'; prompt: string | null }
+  | { type: 'STOP' }
+  | { type: 'AUTO_STOPPED'; durationMs: number }
+  | { type: 'RESET' };
 
 export const recorderMachine = setup({
   types: { context: {} as Context, events: {} as Events, input: {} as Input },
@@ -44,18 +48,23 @@ export const recorderMachine = setup({
     markStarted: assign({ startedAt: () => Date.now() }),
     record: ({ context }) => {
       context.recorder.record({ forDuration: MAX_SECONDS });
-      info('recording.start', { bookId: context.bookId, uri: context.recorder.uri });
+      info('recording.start', { bookId: context.bookId, uri: context.recorder.uri, prompt: context.prompt });
       if (context.recorder.uri) {
-        void writeRecordingMarker({ bookId: context.bookId, uri: context.recorder.uri, startedAt: new Date(context.startedAt).toISOString() });
+        void writeRecordingMarker({
+          bookId: context.bookId,
+          uri: context.recorder.uri,
+          startedAt: new Date(context.startedAt).toISOString(),
+          prompt: context.prompt,
+        });
       }
     },
   },
 }).createMachine({
   id: 'recorder',
-  context: ({ input }) => ({ ...input, startedAt: 0, uri: null, durationMs: 0 }),
+  context: ({ input }) => ({ ...input, startedAt: 0, uri: null, durationMs: 0, prompt: null }),
   initial: 'idle',
   states: {
-    idle: { on: { START: 'permission' } },
+    idle: { on: { START: { target: 'permission', actions: assign({ prompt: ({ event }) => event.prompt }) } } },
     permission: {
       invoke: {
         src: 'permission',

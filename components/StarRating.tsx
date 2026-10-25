@@ -3,8 +3,8 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
-  interpolate,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withDelay,
   withSequence,
@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
+import { SparkBurst } from './SparkBurst';
 import { colors } from '@/lib/theme';
 
 type Props = {
@@ -83,6 +84,8 @@ function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarPr
     transform: [{ scale: scale.value }],
   }));
   const fillStyle = useAnimatedStyle(() => ({ opacity: fill.value }));
+  // One burst value is shared by all five stars; only the tapped one shows it.
+  const myBurst = useDerivedValue(() => (burstIndex.value === index ? burst.value : 0));
 
   return (
     <Pressable
@@ -90,7 +93,7 @@ function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarPr
       hitSlop={6}
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
       accessibilityLabel={`${index + 1} stjärnor`}>
-      <Sparkles index={index} size={size} burst={burst} burstIndex={burstIndex} />
+      <SparkBurst burst={myBurst} radius={size * 0.95} />
       <Animated.View style={[StyleSheet.absoluteFill, starStyle]}>
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Path d={STAR_PATH} fill={colors.goldSoft} stroke={colors.gold} strokeWidth={1.2} strokeLinejoin="round" />
@@ -105,91 +108,6 @@ function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarPr
   );
 }
 
-const SPARKS = [
-  { angle: -90, color: '#FF9AA2' },
-  { angle: -40, color: '#FFDAC1' },
-  { angle: 10, color: '#B5EAD7' },
-  { angle: 60, color: '#C7CEEA' },
-  { angle: 120, color: '#FFD166' },
-  { angle: 170, color: '#F8A5C2' },
-  { angle: 220, color: '#E2F0CB' },
-  { angle: 270, color: '#FFFFFF' },
-];
-
-function Sparkles({
-  index,
-  size,
-  burst,
-  burstIndex,
-}: {
-  index: number;
-  size: number;
-  burst: SharedValue<number>;
-  burstIndex: SharedValue<number>;
-}) {
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {SPARKS.map((s, i) => (
-        <Spark key={i} angle={s.angle} color={s.color} radius={size * 0.95} index={index} burst={burst} burstIndex={burstIndex} />
-      ))}
-    </View>
-  );
-}
-
-function Spark({
-  angle,
-  color,
-  radius,
-  index,
-  burst,
-  burstIndex,
-}: {
-  angle: number;
-  color: string;
-  radius: number;
-  index: number;
-  burst: SharedValue<number>;
-  burstIndex: SharedValue<number>;
-}) {
-  const style = useAnimatedStyle(() => {
-    const active = burstIndex.value === index;
-    const t = active ? burst.value : 0;
-    const rad = (angle * Math.PI) / 180;
-    const d = interpolate(t, [0, 1], [0, radius]);
-    return {
-      opacity: active ? interpolate(t, [0, 0.15, 1], [0, 1, 0]) : 0,
-      transform: [
-        { translateX: Math.cos(rad) * d },
-        { translateY: Math.sin(rad) * d },
-        { scale: interpolate(t, [0, 0.3, 1], [0.2, 1, 0.3]) },
-        { rotate: `${t * 180}deg` },
-      ],
-    };
-  });
-  return (
-    <Animated.View style={[styles.spark, { backgroundColor: color }, style]}>
-      <View style={[styles.sparkDiamond, { backgroundColor: color }]} />
-    </Animated.View>
-  );
-}
-
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  spark: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    marginLeft: -4,
-    marginTop: -4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  sparkDiamond: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    transform: [{ rotate: '45deg' }],
-    borderRadius: 1,
-  },
 });

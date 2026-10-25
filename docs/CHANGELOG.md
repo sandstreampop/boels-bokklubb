@@ -4,13 +4,13 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
-## Unreleased
+## Build 5 (2026-10-25, TestFlight)
+
+### Update 01a173d5 (2026-10-25)
 
 - Writing is its own full screen, like recording: the pencil opens it with the question at the
   top, big letters, and a done button. A fill-in question keeps the blank underlined with the
   cursor already in it.
-
-## Build 5 (2026-10-25, TestFlight)
 
 ### Update 01a173d1 (2026-10-25)
 

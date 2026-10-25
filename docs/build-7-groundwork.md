@@ -1,5 +1,12 @@
 # Build 7 groundwork: what the `bedazzle` branch holds
 
+**Status 2026-10-25, evening: all of this is wired and on Viktor's phone** (build 7 plus updates
+01a17411, 01a17418, 01a1741a and 01a17420; see docs/CHANGELOG.md). Two things changed on the way,
+decided by Viktor after seeing her: the unicorn lives top right, and she rests after the launch
+animation, moving only for a tap, a save or a rainbow book. So `components/TouchWatcher.tsx`, the
+idle hints, keyboard ducking and the yawn and "hm?" clips described below are gone; the voice came
+from OpenGameArt (docs/CREDITS.md), not Freesound. The rest of this file is the handoff as written.
+
 Made 2026-10-25 on branch `bedazzle` while another session shipped build 6 on main. Nothing here has
 shipped: no update, no build, no submit. No existing file under `app/` or `components/` was
 touched, so the merge with build 6 is additive apart from `package.json` and the lockfile. This is

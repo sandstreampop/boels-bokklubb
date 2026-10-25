@@ -26,6 +26,9 @@ Shipped as over-the-air slices in that order; only item 5 needs a TestFlight bui
 
 ## Build 7: "bedazzle" (docs/PRD-build-7.md, after every build-6 feature has landed)
 
+Shipped 2026-10-25: TestFlight build 7 and four updates. Amended with Viktor on the phone: the
+unicorn's home is top right and she rests between cues (no idle hints).
+
 A sprint that takes every interaction from simple to enchanting, the way Bolibompa or Gabby's
 Dollhouse hold a five-year-old. Decided: a unicorn companion (Rive, CC BY art), always on screen,
 reacting to the app and to taps, with a non-verbal voice; one motion vocabulary everywhere and three

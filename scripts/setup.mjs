@@ -16,8 +16,16 @@ const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const FAMILY_EMAIL = 'familjen@boelsbokklubb.app';
 const REPO = 'sandstreampop/boels-bokklubb';
 const BUNDLE_ID = 'com.sandstreampop.boelsbokklubb';
+// Supabase requires six characters; the family password can be shorter. The app applies the same prefix.
+const serverPassword = (typed) => `bokklubb-${typed}`;
 
 const steps = process.argv.slice(2);
+
+/** Accepts the project URL, or any URL under it (people paste the REST endpoint), and returns the base. */
+function projectUrl() {
+  const u = new URL(process.env.SUPABASE_URL);
+  return `${u.protocol}//${u.hostname}`;
+}
 const want = (name) => steps.length === 0 || steps.includes(name);
 
 function need(...names) {
@@ -51,7 +59,7 @@ let anonKey = null;
 
 async function supabase() {
   need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN', 'OPENAI_API_KEY');
-  const url = process.env.SUPABASE_URL.replace(/\/$/, '');
+  const url = projectUrl();
   const ref = new URL(url).hostname.split('.')[0];
   const mgmt = `https://api.supabase.com/v1/projects/${ref}`;
   const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'content-type': 'application/json' };
@@ -107,7 +115,7 @@ async function familyUser(url, serviceKey) {
   const adminHeaders = { apikey: serviceKey, authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' };
   const list = await api(`${url}/auth/v1/admin/users?page=1&per_page=200`, { headers: adminHeaders });
   const existing = (list.users ?? []).find((u) => u.email === FAMILY_EMAIL);
-  const payload = JSON.stringify({ email: FAMILY_EMAIL, password: process.env.BOKKLUBB_PASSWORD, email_confirm: true });
+  const payload = JSON.stringify({ email: FAMILY_EMAIL, password: serverPassword(process.env.BOKKLUBB_PASSWORD), email_confirm: true });
   if (existing) {
     await api(`${url}/auth/v1/admin/users/${existing.id}`, { method: 'PUT', headers: adminHeaders, body: payload });
     ok('family user updated');
@@ -119,7 +127,7 @@ async function familyUser(url, serviceKey) {
 
 async function user() {
   need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
-  const url = process.env.SUPABASE_URL.replace(/\/$/, '');
+  const url = projectUrl();
   const ref = new URL(url).hostname.split('.')[0];
   const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` };
   const keys = await api(`https://api.supabase.com/v1/projects/${ref}/api-keys?reveal=true`, { headers });
@@ -134,7 +142,7 @@ function env() {
   log('Writing .env with public app config');
   writeFileSync(
     join(ROOT, '.env'),
-    `EXPO_PUBLIC_SUPABASE_URL=${process.env.SUPABASE_URL.replace(/\/$/, '')}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${anonKey}\n`,
+    `EXPO_PUBLIC_SUPABASE_URL=${projectUrl()}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${anonKey}\n`,
   );
   ok('.env written (public values, commit it)');
 }

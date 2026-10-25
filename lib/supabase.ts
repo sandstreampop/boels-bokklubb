@@ -11,6 +11,9 @@ export const isConfigured = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length 
 /** One shared family account. The password is the only thing a grown-up ever types. */
 export const FAMILY_EMAIL = 'familjen@boelsbokklubb.app';
 
+/** Supabase wants six characters; the family password may be shorter. scripts/setup.mjs applies the same prefix. */
+export const serverPassword = (typed: string) => `bokklubb-${typed}`;
+
 export const supabase = createClient(
   isConfigured ? SUPABASE_URL : 'https://placeholder.supabase.co',
   isConfigured ? SUPABASE_ANON_KEY : 'placeholder',

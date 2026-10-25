@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } 
 import { Icon } from './Icon';
 import { RainbowBar } from './Rainbow';
 import { RoundButton } from './RoundButton';
-import { FAMILY_EMAIL, isConfigured, supabase } from '@/lib/supabase';
+import { FAMILY_EMAIL, isConfigured, serverPassword, supabase } from '@/lib/supabase';
 import { colors, fonts, radius } from '@/lib/theme';
 
 /** One field. A grown-up types the family password once per phone. */
@@ -18,7 +18,7 @@ export function Login() {
   const submit = async () => {
     if (!password || busy) return;
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: FAMILY_EMAIL, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: FAMILY_EMAIL, password: serverPassword(password) });
     setBusy(false);
     if (error) {
       shake.set(
@@ -46,6 +46,7 @@ export function Login() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            keyboardType="number-pad"
             autoCapitalize="none"
             autoCorrect={false}
             textContentType="password"

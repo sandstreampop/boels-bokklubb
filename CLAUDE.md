@@ -19,6 +19,7 @@ Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust me
 - Minimal text in the UI, icons over labels, no explaining prose. Swedish where words are needed.
 - Look: pastel pink base, pastel rainbow accent, sparkle on stars and record button. Tokens in lib/theme.ts.
 - One shared family login (email `familjen@boelsbokklubb.app`, password from `BOKKLUBB_PASSWORD`).
+  The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
 - Not building: admin screens, read status, editing, sharing, search.
 
 ## Layout

@@ -100,6 +100,17 @@ export const getState = () => store.getSnapshot().context;
 export const selectBook = (id: string | undefined) => (s: StoreContext) => (id ? s.books.find((b) => b.id === id) : undefined);
 export const selectEntries = (id: string | undefined) => (s: StoreContext) => (id ? (s.entries[id] ?? NO_ENTRIES) : NO_ENTRIES);
 
+// ---- fresh entries ----------------------------------------------------------------------------------
+
+/**
+ * Ids of entries created on this device in this launch and not yet shown. The card that first
+ * renders one takes it and plays the reward (bounce, sparkle, autoplay). Entries from sync never
+ * get here. Not persisted: a relaunch shows everything calmly.
+ */
+const fresh = new Set<string>();
+export const markFresh = (id: string) => fresh.add(id);
+export const takeFresh = (id: string) => fresh.delete(id);
+
 // ---- mutations (thin names for the rest of lib/) ---------------------------------------------------
 
 export const upsertBook = (book: Book) => store.trigger.upsertBook({ book });

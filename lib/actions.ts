@@ -3,7 +3,7 @@
 import { dirs, extensionOf, keepFile } from './files';
 import { uuid } from './ids';
 import { enqueue } from './machines/outbox';
-import { patchBook, rememberLocalMedia, upsertBook, upsertEntry } from './store';
+import { markFresh, patchBook, rememberLocalMedia, upsertBook, upsertEntry } from './store';
 import { traced } from './telemetry';
 import type { Book, Entry } from './types';
 
@@ -60,6 +60,7 @@ async function addTextEntryInner(bookId: string, text: string, prompt: string | 
     transcript_status: 'none',
     pending: true,
   };
+  markFresh(entry.id);
   upsertEntry(entry);
   enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: null, attempts: 0 });
 }
@@ -87,6 +88,7 @@ async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<voi
     transcript_status: 'none',
     pending: true,
   };
+  markFresh(entry.id);
   upsertEntry(entry);
   enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }
@@ -128,6 +130,7 @@ async function addAudioEntryInner(
     transcript_status: 'pending',
     pending: true,
   };
+  if (!createdAt) markFresh(entry.id);
   upsertEntry(entry);
   enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }

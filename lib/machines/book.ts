@@ -11,7 +11,7 @@ import { assign, fromPromise, setup } from 'xstate';
 import { addAudioEntry, addPhotoEntry, addTextEntry, rateBook } from '@/lib/actions';
 import { pickPhoto } from '@/lib/images';
 import { pickPrompt } from '@/lib/prompts';
-import { captureError, info } from '@/lib/telemetry';
+import { captureError, debug } from '@/lib/telemetry';
 import type { PromptPool } from '@/lib/types';
 
 type Input = { bookId: string };
@@ -21,8 +21,6 @@ type Context = Input & {
   speakPrompt: string | null;
   /** The question in the composer. Picked when the page opens and after every saved text. */
   writePrompt: string;
-  /** Wand taps per pool on this page visit, for telemetry only. */
-  rerolls: Record<PromptPool, number>;
 };
 type Events =
   | { type: 'SET_TEXT'; text: string }
@@ -52,13 +50,11 @@ export const bookMachine = setup({
     ),
   },
   actions: {
-    reroll: assign(({ context, event }) => {
+    reroll: assign(({ event }) => {
       if (event.type !== 'REROLL_PROMPT') return {};
-      const count = context.rerolls[event.pool] + 1;
-      info('prompt.reroll', { pool: event.pool, count, bookId: context.bookId });
+      debug('prompt.reroll', { pool: event.pool });
       const next = pickPrompt(event.pool);
       return {
-        rerolls: { ...context.rerolls, [event.pool]: count },
         ...(event.pool === 'speak' ? { speakPrompt: next } : {}),
         ...(event.pool === 'write' ? { writePrompt: next } : {}),
       };
@@ -74,7 +70,6 @@ export const bookMachine = setup({
     text: '',
     speakPrompt: null,
     writePrompt: pickPrompt('write'),
-    rerolls: { speak: 0, write: 0, draw: 0 },
   }),
   initial: 'idle',
   on: {

@@ -1,26 +1,46 @@
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { Icon } from './Icon';
+import { SparkBurst } from './SparkBurst';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
+import { takeFresh } from '@/lib/store';
+import { debug } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Entry } from '@/lib/types';
 
 export function EntryCard({ entry }: { entry: Entry }) {
+  // Taken once, on first render: a fresh entry bounces in with sparks, and a fresh recording plays.
+  const [fresh] = useState(() => takeFresh(entry.id));
+  const scale = useSharedValue(fresh ? 0.6 : 1);
+  const burst = useSharedValue(0);
+  const appear = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  useEffect(() => {
+    if (!fresh) return;
+    debug('entry.appear', { id: entry.id, kind: entry.kind });
+    scale.set(withSpring(1, { damping: 9, stiffness: 190, mass: 0.9 }));
+    burst.set(withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh]);
+
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, appear]}>
       {entry.kind !== 'text' && !!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
       {entry.kind === 'text' && <TextBody entry={entry} />}
       {(entry.kind === 'photo' || entry.kind === 'drawing') && <PhotoBody entry={entry} />}
-      {entry.kind === 'audio' && <AudioBody entry={entry} />}
+      {entry.kind === 'audio' && <AudioBody entry={entry} autoplay={fresh} />}
       <View style={styles.footer}>
         <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
         {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
       </View>
-    </View>
+      {fresh && <SparkBurst burst={burst} radius={60} style={styles.corner} />}
+    </Animated.View>
   );
 }
 
@@ -57,11 +77,15 @@ function PhotoBody({ entry }: { entry: Entry }) {
   );
 }
 
-function AudioBody({ entry }: { entry: Entry }) {
+function AudioBody({ entry, autoplay }: { entry: Entry; autoplay: boolean }) {
   const uri = useMediaUri('media', entry.media_path);
   return (
     <View style={{ gap: 10 }}>
-      {uri ? <Player uri={uri} durationMs={entry.duration_ms ?? 0} /> : <PlayerShell durationMs={entry.duration_ms ?? 0} />}
+      {uri ? (
+        <Player uri={uri} durationMs={entry.duration_ms ?? 0} autoplay={autoplay} entryId={entry.id} />
+      ) : (
+        <PlayerShell durationMs={entry.duration_ms ?? 0} />
+      )}
       {entry.transcript ? (
         <Text style={styles.transcript}>{entry.transcript}</Text>
       ) : entry.transcript_status === 'failed' ? null : (
@@ -86,12 +110,22 @@ function PlayerShell({ durationMs }: { durationMs: number }) {
   );
 }
 
-function Player({ uri, durationMs }: { uri: string; durationMs: number }) {
+function Player({ uri, durationMs, autoplay, entryId }: { uri: string; durationMs: number; autoplay: boolean; entryId: string }) {
   const player = useAudioPlayer({ uri });
   const status = useAudioPlayerStatus(player);
   const total = status.duration > 0 ? status.duration * 1000 : durationMs;
   const progress = total > 0 ? Math.min(1, (status.currentTime * 1000) / total) : 0;
   const playing = status.playing;
+
+  // The reward: her voice plays back once, as soon as the file is loaded. At the phone's volume.
+  const played = useRef(false);
+  useEffect(() => {
+    if (!autoplay || played.current || !status.isLoaded) return;
+    played.current = true;
+    debug('entry.autoplay', { id: entryId, durationMs: total });
+    player.play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoplay, status.isLoaded]);
 
   const toggle = () => {
     if (playing) {
@@ -146,6 +180,7 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   date: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.muted },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.pink },
+  corner: { left: undefined, bottom: undefined, right: -8, top: -8, width: 16, height: 16 },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.pinkSoft },
   player: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   playBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.pinkDeep, alignItems: 'center', justifyContent: 'center' },

@@ -4,7 +4,12 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
-## Unreleased
+## Build 6 (2026-10-25, TestFlight)
+
+What to test: tap the crayon on a book, draw, tap done; the drawing lands in the stream. Add a
+book and draw its cover.
+
+### Update 01a173f0 (2026-10-25)
 
 - Hold a finger on any entry, or on the totals page, to send it as a picture card: the cover,
   the title and stars, the question, her words, the date and a rainbow.
@@ -12,11 +17,6 @@ first eight characters of what `npm run logs` shows in the `app` column.
   when she presses the button, not before. A tap outside the button closes the screen.
 - The camera button opens the camera straight away; photos are taken, never picked from the
   gallery, on the book page and for covers.
-
-## Build 6 (2026-10-25, TestFlight)
-
-What to test: tap the crayon on a book, draw, tap done; the drawing lands in the stream. Add a
-book and draw its cover.
 
 - Drawing: a crayon on the book page opens a white square with seven crayons and undo; the
   drawing lands in the stream like a photo, with its question above it.

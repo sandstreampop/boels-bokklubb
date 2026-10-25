@@ -5,6 +5,7 @@ React Native, TypeScript, Expo Router) with Supabase for the database, file stor
 speech-to-text edge function. Distributed to the family through TestFlight internal testing.
 
 Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust memory for Expo APIs).
+The plan lives in docs/ROADMAP.md; the next build's spec is docs/PRD-build-6.md. Start there.
 
 ## Product rules, decided with Viktor
 

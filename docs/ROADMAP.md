@@ -24,11 +24,13 @@ The goal is pull: Boel wants to open it, talk, write, draw, and Viktor wants to 
 
 Shipped as over-the-air slices in that order; only item 5 needs a TestFlight build.
 
-## Build 7: "bedazzle" (after every build-6 feature has landed)
+## Build 7: "bedazzle" (docs/PRD-build-7.md, after every build-6 feature has landed)
 
 A sprint that takes every interaction from simple to enchanting, the way Bolibompa or Gabby's
-Dollhouse hold a five-year-old: animation, microinteractions and sound on everything she touches.
-Not designed yet; a PRD comes after build 6 ships and we have watched her use it. Principles agreed:
+Dollhouse hold a five-year-old. Decided: a unicorn companion (Rive, CC BY art), always on screen,
+reacting to the app and to taps, with a non-verbal voice; one motion vocabulary everywhere and three
+set pieces (launch, entry saved, rainbow book); sound as a layer that follows the ring switch.
+Principles:
 
 - Every tap answers: a squish, a sparkle, a sound. Every save celebrates. Every screen enters with
   motion. Stars, the mic, the crayons, the shelf and the rainbow rings all get their own moment.
@@ -57,6 +59,7 @@ Not designed yet; a PRD comes after build 6 ships and we have watched her use it
 ## Not doing
 
 - Streaks, reminders, daily goals. Gaps must never cost her anything.
+- Usage analytics of any kind. Telemetry exists to find bugs, not to measure a child.
 - Points, coins, sticker currencies. The shelf and the stats are the only score.
 - Editing or deleting in the app. Fixes happen in Supabase.
 - A chatbot. Prompts are a fixed pool of questions; the words are hers.

@@ -44,8 +44,7 @@ every transition, per CLAUDE.md.
   limit on rerolls and nothing is stored about them. The wand is the `wand` icon in the icon set
   (a tilted stick with three sparkle dots), 56 pt, pink on the white writing screen and the canvas,
   white on the deep-pink recorder. Rerolling while recording keeps recording; the prompt that is on
-  screen when she saves is the one stored with the entry. Telemetry: `prompt.reroll` with pool and
-  count per session.
+  screen when she saves is the one stored with the entry. Telemetry: `prompt.reroll` as a breadcrumb.
 - Stored: `entries.prompt text null` (migration 0003). The outbox sends it, sync reads it, the
   entry card shows it above her words in the muted style, smaller than her text. Audio entries
   show it above the player. Old entries have no prompt and look as today.
@@ -60,7 +59,7 @@ every transition, per CLAUDE.md.
 - Every newly created entry (text, audio, photo, drawing) bounces in: scale from 0.6 with a spring,
   plus the existing star-sparkle burst reused at the card's corner. Entries arriving from sync do
   not animate.
-- Telemetry: `entry.autoplay` with duration, `entry.appear` with kind.
+- Telemetry: breadcrumbs only, as everywhere.
 
 ### Slice 3: full-screen writing
 
@@ -85,8 +84,7 @@ every transition, per CLAUDE.md.
   Totals only, no time axis. Six tiles with an icon and a big number, no labels: books, rainbow
   books, voice notes, written thoughts, photos, drawings. Rainbow books is the largest tile. Back
   button like the book page. Long-press anywhere on the stats shares it as an image (slice 6).
-- Telemetry: `screen.focus` for stats, `book.completed` once per book when it first becomes
-  complete.
+- Telemetry: `screen.focus` for stats, `book.completed` as a breadcrumb.
 
 ### Slice 5: native build 6, drawing
 
@@ -108,7 +106,7 @@ nothing else. Then `npm run build:ios`.
   replaced once set (append-only rule).
 - `drawingMachine`: idle → drawing → exporting → done. Keeps the path list in context so undo is a
   pop.
-- Telemetry: strokes count and colours used on save, export duration, failures.
+- Telemetry: export duration and failures.
 
 ### Slice 6: share cards
 
@@ -124,7 +122,7 @@ nothing else. Then `npm run build:ios`.
   "Boels bokklubb" and the date.
 - Rendered with a hidden `ShareCard` component and view-shot; the file goes to the cache directory
   and is removed after the sheet closes.
-- Telemetry: `share.open` with kind, `share.done` or `share.cancel`.
+- Telemetry: `share.open`, `share.done`, `share.cancel` as breadcrumbs, plus failures.
 
 ## 3. Data changes (migration 0003_prompts_and_drawings.sql)
 
@@ -165,8 +163,8 @@ prompts in the app, no time-based stats, no notifications, no Android testing.
 6. Slice 6 over the air once build 6 is installed (view-shot is in the binary by then).
 7. Each slice: typecheck, lint, expo-doctor, commit to main, push, ship.
 
-Everything ships with telemetry. After each slice, read the logs from Viktor's phone before
-starting the next.
+Everything ships with telemetry, which is for finding bugs, never for measuring her. After each
+slice, read the logs from Viktor's phone for errors before starting the next.
 
 ## Appendix A: starter prompt pools (Swedish, 50 each)
 

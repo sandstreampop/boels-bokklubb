@@ -10,6 +10,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
   the title and stars, the question, her words, the date and a rainbow.
 - The mic opens the recording screen with the question and a record button; recording starts
   when she presses the button, not before. A tap outside the button closes the screen.
+- The camera button opens the camera straight away; photos are taken, never picked from the
+  gallery, on the book page and for covers.
 
 ## Build 6 (2026-10-25, TestFlight)
 

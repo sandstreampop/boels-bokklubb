@@ -1,6 +1,6 @@
 // Adding a book: edit the fields, optionally pick a cover, save once.
 //
-//   editing ──PICK──▶ picking ──▶ editing     editing ──SAVE (title not empty)──▶ saving ──▶ saved
+//   editing ──PHOTO──▶ picking (camera) ──▶ editing     editing ──SAVE (title not empty)──▶ saving ──▶ saved
 //   editing ──DRAW──▶ drawing ──DRAWING_DONE(uri)──▶ editing (the drawing is the cover)
 //                                                                                   │ error
 //                                                                                   ▼
@@ -9,7 +9,7 @@
 import { assign, fromPromise, setup } from 'xstate';
 
 import { addBook } from '@/lib/actions';
-import { pickPhoto } from '@/lib/images';
+import { takePhoto } from '@/lib/images';
 import { captureError } from '@/lib/telemetry';
 import type { Book } from '@/lib/types';
 
@@ -17,7 +17,7 @@ type Context = { title: string; author: string; coverUri: string | null; book: B
 type Events =
   | { type: 'SET_TITLE'; title: string }
   | { type: 'SET_AUTHOR'; author: string }
-  | { type: 'PICK'; source: 'camera' | 'library' }
+  | { type: 'PHOTO' }
   | { type: 'DRAW' }
   | { type: 'DRAWING_DONE'; uri: string | null }
   | { type: 'SAVE' };
@@ -25,7 +25,7 @@ type Events =
 export const newBookMachine = setup({
   types: { context: {} as Context, events: {} as Events },
   actors: {
-    pick: fromPromise(({ input }: { input: { source: 'camera' | 'library' } }) => pickPhoto(input.source)),
+    pick: fromPromise(() => takePhoto()),
     save: fromPromise(({ input }: { input: Context }) =>
       addBook({ title: input.title.trim(), author: input.author.trim() || null, coverUri: input.coverUri }),
     ),
@@ -42,7 +42,7 @@ export const newBookMachine = setup({
       on: {
         SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
         SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
-        PICK: 'picking',
+        PHOTO: 'picking',
         DRAW: 'drawing',
         SAVE: { guard: 'canSave', target: 'saving' },
       },
@@ -53,7 +53,6 @@ export const newBookMachine = setup({
     picking: {
       invoke: {
         src: 'pick',
-        input: ({ event }) => ({ source: event.type === 'PICK' ? event.source : 'library' }),
         onDone: { target: 'editing', actions: assign({ coverUri: ({ event, context }) => event.output ?? context.coverUri }) },
         onError: { target: 'editing', actions: ({ event }) => captureError('book.new.pick', event.error) },
       },

@@ -1,7 +1,7 @@
 // What Boel can do on a book page: write, photograph, record, rate. One thing at a time.
 //
 //   idle ──START_WRITING──▶ writing ──WRITING_DONE──▶ idle (fresh write prompt; the writer saved)
-//   idle ──OPEN_PHOTOS──▶ choosingPhoto ──PICK──▶ takingPhoto ──▶ idle
+//   idle ──TAKE_PHOTO──▶ takingPhoto (camera only, never the gallery) ──▶ idle
 //   idle ──START_RECORDING──▶ recording (fresh speak prompt) ──RECORDING_DONE──▶ savingAudio ──▶ idle
 //                                  └─RECORDING_SKIPPED / RECORDING_UNAVAILABLE──▶ idle
 //   idle ──START_DRAWING──▶ drawing (fresh draw prompt) ──DRAWING_DONE(uri)──▶ savingDrawing ──▶ idle
@@ -12,7 +12,7 @@
 import { assign, fromPromise, setup } from 'xstate';
 
 import { addAudioEntry, addDrawingEntry, addPhotoEntry, rateBook, setDrawnCover } from '@/lib/actions';
-import { pickPhoto } from '@/lib/images';
+import { takePhoto } from '@/lib/images';
 import { pickPrompt } from '@/lib/prompts';
 import { captureError, debug } from '@/lib/telemetry';
 import type { PromptPool } from '@/lib/types';
@@ -29,9 +29,7 @@ type Context = Input & {
 type Events =
   | { type: 'START_WRITING' }
   | { type: 'WRITING_DONE' }
-  | { type: 'OPEN_PHOTOS' }
-  | { type: 'CLOSE_PHOTOS' }
-  | { type: 'PICK'; source: 'camera' | 'library' }
+  | { type: 'TAKE_PHOTO' }
   | { type: 'START_RECORDING' }
   | { type: 'RECORDING_DONE'; uri: string; durationMs: number }
   | { type: 'RECORDING_UNAVAILABLE' }
@@ -46,8 +44,8 @@ type Events =
 export const bookMachine = setup({
   types: { context: {} as Context, events: {} as Events, input: {} as Input },
   actors: {
-    takePhoto: fromPromise(async ({ input }: { input: { bookId: string; source: 'camera' | 'library' } }) => {
-      const uri = await pickPhoto(input.source);
+    takePhoto: fromPromise(async ({ input }: { input: { bookId: string } }) => {
+      const uri = await takePhoto();
       if (uri) await addPhotoEntry(input.bookId, uri);
       return !!uri;
     }),
@@ -96,7 +94,7 @@ export const bookMachine = setup({
     idle: {
       on: {
         START_WRITING: 'writing',
-        OPEN_PHOTOS: 'choosingPhoto',
+        TAKE_PHOTO: 'takingPhoto',
         START_RECORDING: 'recording',
         START_DRAWING: 'drawing',
         DRAW_COVER: 'drawingCover',
@@ -128,13 +126,10 @@ export const bookMachine = setup({
     writing: {
       on: { WRITING_DONE: { target: 'idle', actions: assign({ writePrompt: () => pickPrompt('write') }) } },
     },
-    choosingPhoto: {
-      on: { PICK: 'takingPhoto', CLOSE_PHOTOS: 'idle' },
-    },
     takingPhoto: {
       invoke: {
         src: 'takePhoto',
-        input: ({ context, event }) => ({ bookId: context.bookId, source: event.type === 'PICK' ? event.source : 'library' }),
+        input: ({ context }) => ({ bookId: context.bookId }),
         onDone: 'idle',
         onError: { target: 'idle', actions: ({ event, context }) => captureError('book.takePhoto', event.error, { bookId: context.bookId }) },
       },

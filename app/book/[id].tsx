@@ -38,7 +38,6 @@ export default function BookPage() {
   const writing = state.matches('writing');
   const drawing = state.matches('drawing');
   const drawingCover = state.matches('drawingCover');
-  const photoSheet = state.matches('choosingPhoto');
   useScreen('book', { id, found: !!book });
 
   useFocusEffect(
@@ -79,7 +78,7 @@ export default function BookPage() {
           <View style={styles.actions}>
             <RoundButton icon="mic" size={74} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
             <RoundButton icon="pencil" size={74} color={colors.pink} label="Skriv" onPress={() => send({ type: 'START_WRITING' })} />
-            <RoundButton icon="camera" size={74} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
+            <RoundButton icon="camera" size={74} color={colors.pink} label="Fota" onPress={() => send({ type: 'TAKE_PHOTO' })} />
             <RoundButton icon="crayon" size={74} color={colors.pink} label="Rita" onPress={() => send({ type: 'START_DRAWING' })} />
           </View>
         </View>
@@ -143,14 +142,6 @@ export default function BookPage() {
         onDone={() => send({ type: 'WRITING_DONE' })}
       />
 
-      {photoSheet && (
-        <Pressable style={styles.sheetBackdrop} onPress={() => send({ type: 'CLOSE_PHOTOS' })} accessibilityLabel="Stäng">
-          <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-            <RoundButton icon="camera" size={92} label="Kamera" onPress={() => send({ type: 'PICK', source: 'camera' })} />
-            <RoundButton icon="photo" size={92} color={colors.pink} label="Bilder" onPress={() => send({ type: 'PICK', source: 'library' })} />
-          </View>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -179,22 +170,4 @@ const styles = StyleSheet.create({
   author: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.muted },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 4 },
   back: { position: 'absolute', left: 20 },
-  sheetBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(58,36,48,0.35)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingTop: 32,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 32,
-  },
 });

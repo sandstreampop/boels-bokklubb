@@ -55,11 +55,8 @@ export default function NewBook() {
               <Icon name="photo" size={56} color={colors.pink} strokeWidth={1.8} />
             )}
             <View style={styles.coverButtons}>
-              <Pressable onPress={() => send({ type: 'PICK', source: 'camera' })} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
+              <Pressable onPress={() => send({ type: 'PHOTO' })} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
                 <Icon name="camera" size={26} color={colors.pinkDeep} />
-              </Pressable>
-              <Pressable onPress={() => send({ type: 'PICK', source: 'library' })} style={styles.coverBtn} accessibilityLabel="Välj bild">
-                <Icon name="photo" size={26} color={colors.pinkDeep} />
               </Pressable>
               <Pressable onPress={() => send({ type: 'DRAW' })} style={styles.coverBtn} accessibilityLabel="Rita omslaget">
                 <Icon name="crayon" size={26} color={colors.pinkDeep} />

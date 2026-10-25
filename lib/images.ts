@@ -5,25 +5,20 @@ import { info, traced } from './telemetry';
 
 const MAX_SIDE = 1600;
 
-/** Open camera or library. Resolves to a downsized JPEG uri in the cache dir, or null if cancelled. */
-export async function pickPhoto(source: 'camera' | 'library'): Promise<string | null> {
-  if (source === 'camera') {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      info('image.camera.denied', { status: perm.status });
-      return null;
-    }
+/** Open the camera (never the gallery: photos are taken, not chosen). Resolves to a downsized JPEG uri, or null if cancelled. */
+export async function takePhoto(): Promise<string | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) {
+    info('image.camera.denied', { status: perm.status });
+    return null;
   }
-  const result =
-    source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, selectionLimit: 1 });
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 });
   if (result.canceled || !result.assets?.length) {
-    info('image.pick.cancelled', { source });
+    info('image.pick.cancelled');
     return null;
   }
   const asset = result.assets[0];
-  return traced('image.shrink', { source, width: asset.width, height: asset.height, bytes: asset.fileSize ?? null }, () =>
+  return traced('image.shrink', { width: asset.width, height: asset.height, bytes: asset.fileSize ?? null }, () =>
     shrinkToJpeg(asset.uri, asset.width, asset.height),
   );
 }

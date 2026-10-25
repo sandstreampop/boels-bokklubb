@@ -4,6 +4,13 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
+## Unreleased
+
+- A book with stars, a recording and a picture gets a rainbow ring around its cover, and the
+  number of rainbow books shows next to the title.
+- Tapping the title opens a page of totals: books, rainbow books, recordings, thoughts, photos
+  and drawings.
+
 ## Build 5 (2026-10-25, TestFlight)
 
 ### Update 01a173d5 (2026-10-25)

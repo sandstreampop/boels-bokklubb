@@ -18,7 +18,9 @@ export type IconName =
   | 'unicorn'
   | 'lock'
   | 'refresh'
-  | 'wand';
+  | 'wand'
+  | 'book'
+  | 'crayon';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -93,6 +95,19 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
           <Path d="M17.5 3.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill={color} stroke={color} strokeWidth={0.6} strokeLinejoin="round" />
           <Circle cx={21} cy={11.5} r={1.4} fill={color} />
           <Circle cx={12.5} cy={4.5} r={1.1} fill={color} />
+        </>
+      )}
+      {name === 'book' && (
+        <>
+          <Path d="M4 5a2 2 0 0 1 2-2h12.5v15H6a2 2 0 0 0-2 2z" {...common} />
+          <Path d="M4 20a2 2 0 0 1 2-2h12.5v3H6a2 2 0 0 1-2-2z" {...common} />
+        </>
+      )}
+      {name === 'crayon' && (
+        <>
+          <Path d="M7 21l-3-3 11-11 3 3z" {...common} />
+          <Path d="M15 7l2.2-2.2a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L18 10" {...common} />
+          <Path d="M4 18l-1 4 4-1" {...common} />
         </>
       )}
       {name === 'lock' && (

@@ -6,7 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EntryCard } from '@/components/EntryCard';
-import { RainbowFill } from '@/components/Rainbow';
+import { RainbowFill, RainbowRing } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
 import { StarRating } from '@/components/StarRating';
@@ -15,10 +15,13 @@ import { bookMachine } from '@/lib/machines/book';
 import { inspect } from '@/lib/machines/inspect';
 import { useMediaUri } from '@/lib/media';
 import { useScreen } from '@/lib/screen';
-import { selectBook, selectEntries, useStore } from '@/lib/store';
+import { selectBook, selectComplete, selectEntries, useStore } from '@/lib/store';
 import { pullEntries } from '@/lib/sync';
 import { warn } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
+
+const COVER_W = 120;
+const COVER_H = 150;
 
 export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +29,7 @@ export default function BookPage() {
   const insets = useSafeAreaInsets();
   const book = useStore(selectBook(id));
   const entries = useStore(selectEntries(id));
+  const complete = useStore(selectComplete(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
   const { writePrompt, speakPrompt } = state.context;
@@ -45,15 +49,18 @@ export default function BookPage() {
       book ? (
         <View style={styles.header}>
           <View style={styles.coverRow}>
-            <View style={styles.cover}>
-              {cover ? (
+            <View style={styles.coverWrap}>
+              {complete && <RainbowRing width={COVER_W} height={COVER_H} radius={radius.md} />}
+              <View style={styles.cover}>
+                {cover ? (
                 <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-              ) : (
-                <>
-                  <RainbowFill seed={book.id} style={StyleSheet.absoluteFill} />
-                  <Text style={styles.initial}>{book.title.trim().charAt(0).toUpperCase()}</Text>
-                </>
-              )}
+                ) : (
+                  <>
+                    <RainbowFill seed={book.id} style={StyleSheet.absoluteFill} />
+                    <Text style={styles.initial}>{book.title.trim().charAt(0).toUpperCase()}</Text>
+                  </>
+                )}
+              </View>
             </View>
             <View style={styles.titleBlock}>
               <Text style={styles.title}>{book.title}</Text>
@@ -69,7 +76,7 @@ export default function BookPage() {
         </View>
       ) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [book, cover],
+    [book, cover, complete],
   );
 
   if (!book || !id) {
@@ -135,9 +142,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { gap: 22, paddingTop: 52, paddingBottom: 10 },
   coverRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-end' },
+  coverWrap: { width: COVER_W, height: COVER_H },
   cover: {
-    width: 120,
-    height: 150,
+    width: COVER_W,
+    height: COVER_H,
     borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.pinkSoft,

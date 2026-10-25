@@ -10,7 +10,7 @@ import { useSelector } from '@xstate/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createStore } from '@xstate/store';
 
-import { captureError, info } from './telemetry';
+import { captureError, debug, info } from './telemetry';
 import type { Book, Entry, PromptPool } from './types';
 
 export type StoreContext = {
@@ -100,6 +100,36 @@ export const getState = () => store.getSnapshot().context;
 export const selectBook = (id: string | undefined) => (s: StoreContext) => (id ? s.books.find((b) => b.id === id) : undefined);
 export const selectEntries = (id: string | undefined) => (s: StoreContext) => (id ? (s.entries[id] ?? NO_ENTRIES) : NO_ENTRIES);
 
+/** A book is complete when it has stars, at least one recording and at least one picture. Nothing stored. */
+export function isComplete(book: Book, entries: Entry[]): boolean {
+  if (!book.rating) return false;
+  let audio = false;
+  let picture = false;
+  for (const e of entries) {
+    if (e.kind === 'audio') audio = true;
+    else if (e.kind === 'photo' || e.kind === 'drawing') picture = true;
+    if (audio && picture) return true;
+  }
+  return false;
+}
+export const selectComplete = (id: string | undefined) => (s: StoreContext) => {
+  const book = id ? s.books.find((b) => b.id === id) : undefined;
+  return !!book && isComplete(book, s.entries[book.id] ?? NO_ENTRIES);
+};
+export const selectCompleteIds = (s: StoreContext) => s.books.filter((b) => isComplete(b, s.entries[b.id] ?? NO_ENTRIES)).map((b) => b.id);
+export const selectCompleteCount = (s: StoreContext) => selectCompleteIds(s).length;
+
+export type Stats = { books: number; rainbow: number; audio: number; text: number; photo: number; drawing: number };
+export const selectStats = (s: StoreContext): Stats => {
+  const out: Stats = { books: s.books.length, rainbow: 0, audio: 0, text: 0, photo: 0, drawing: 0 };
+  for (const b of s.books) {
+    const list = s.entries[b.id] ?? NO_ENTRIES;
+    if (isComplete(b, list)) out.rainbow++;
+    for (const e of list) out[e.kind]++;
+  }
+  return out;
+};
+
 // ---- fresh entries ----------------------------------------------------------------------------------
 
 /**
@@ -121,6 +151,24 @@ export const rememberLocalMedia = (mediaPath: string, localUri: string) => store
 export const mergeBooksFromServer = (rows: Book[]) => store.trigger.mergeBooks({ rows });
 export const mergeEntriesFromServer = (bookId: string, rows: Entry[]) => store.trigger.mergeEntries({ bookId, rows });
 export const rememberPrompt = (pool: PromptPool, index: number) => store.trigger.rememberPrompt({ pool, index });
+
+// ---- the moment a book becomes complete ------------------------------------------------------------
+
+let completed: Set<string> | null = null;
+store.subscribe((snap) => {
+  if (!snap.context.loaded) return;
+  const now = selectCompleteIds(snap.context);
+  if (completed === null) {
+    completed = new Set(now);
+    return;
+  }
+  for (const id of now) {
+    if (!completed.has(id)) {
+      completed.add(id);
+      debug('book.completed', { bookId: id });
+    }
+  }
+});
 
 // ---- persistence -----------------------------------------------------------------------------------
 

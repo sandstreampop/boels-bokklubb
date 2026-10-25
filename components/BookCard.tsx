@@ -2,8 +2,9 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { RainbowFill } from './Rainbow';
+import { RainbowFill, RainbowRing } from './Rainbow';
 import { useMediaUri } from '@/lib/media';
+import { selectComplete, useStore } from '@/lib/store';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Book } from '@/lib/types';
 
@@ -11,9 +12,11 @@ const STAR = 'M12 2.5l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.3l-6 3.3 1.3-6.6L2.4 9
 
 export function BookCard({ book, onPress, width }: { book: Book; onPress: () => void; width: number }) {
   const cover = useMediaUri('covers', book.cover_path);
+  const complete = useStore(selectComplete(book.id));
   const h = Math.round(width * 1.25);
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={book.title} style={{ width }}>
+      {complete && <RainbowRing width={width} height={h} radius={radius.lg} />}
       <View style={[styles.cover, { width, height: h }]}>
         {cover ? (
           <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />

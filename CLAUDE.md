@@ -10,8 +10,10 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 
 ## Product rules, decided with Viktor
 
-- Three screens only: library (grid of books, one plus button), add book (title required, author and
-  cover optional), book page (one textbox, mic, camera, 1 to 5 star rating, stream of entries).
+- Four screens only: library (grid of books, one plus button, the title opens the stats), add book
+  (title required, author and cover optional), book page (mic, pencil, camera, crayon, 1 to 5 star
+  rating, stream of entries), stats (six totals, no time axis). Writing and drawing are full-screen
+  modes like recording.
 - The stream is append-only. Nothing in the app edits or deletes. Fixes happen via Supabase.
 - No autocorrect, no spellcheck anywhere. Her spelling is the point. Every TextInput sets
   `autoCorrect={false} spellCheck={false} autoCapitalize="none"`.
@@ -19,6 +21,11 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
   the document directory and a marker file lets a crash still produce an entry on next launch.
 - Transcription is a bonus. Audio is always kept. Swedish is hinted, not forced.
 - Minimal text in the UI, icons over labels, no explaining prose. Swedish where words are needed.
+- Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts. The magic
+  wand rerolls a prompt anywhere one is shown.
+- Share is a long-press, never a visible button.
+- A book with stars, a recording and a picture is complete and wears the rainbow ring. Derived,
+  never stored.
 - Look: pastel pink base, pastel rainbow accent, sparkle on stars and record button. Tokens in lib/theme.ts.
 - One shared family login (email `familjen@boelsbokklubb.app`, password from `BOKKLUBB_PASSWORD`).
   The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
@@ -35,7 +42,8 @@ build 1 impossible by construction.
 - `machines/app.ts` boot, session, sign-in. Provided at the root as `AppActor`.
 - `machines/outbox.ts` the durable upload queue (one module-level actor; `enqueue` from actions).
 - `machines/recorder.ts` permission → prepare → recording → stopping → done. Owned by RecorderOverlay.
-- `machines/newBook.ts` the add-book form. `machines/book.ts` the book page: text, photo, record, rate.
+- `machines/newBook.ts` the add-book form. `machines/book.ts` the book page: write, photo, record, rate,
+  and the prompts (it owns what the wand rerolls). `machines/writer.ts` full-screen writing.
 - `machines/inspect.ts` turns every transition into a telemetry breadcrumb and reports actor errors.
   Pass `{ inspect }` to every `useMachine`, `createActor` and `createActorContext`.
 
@@ -46,10 +54,10 @@ file header comment. Reads from the store go through `useStore(selector)` and th
 
 ## Layout
 
-- `app/` routes: `index.tsx` library, `book/new.tsx`, `book/[id].tsx`, `_layout.tsx` auth gate.
+- `app/` routes: `index.tsx` library, `book/new.tsx`, `book/[id].tsx`, `stats.tsx`, `_layout.tsx` auth gate.
 - `components/` UI. `lib/` data: `store.ts` local-first state, `machines/` flows (see above),
   `actions.ts` what machines call to create things, `media.ts` local file cache, `sync.ts` server
-  pull, `recording.ts` crash recovery, `telemetry.ts` observability.
+  pull, `recording.ts` crash recovery, `telemetry.ts` observability, `prompts.ts` the three pools.
 - `supabase/migrations` schema and storage policies. `supabase/functions/transcribe` edge function.
 - `scripts/setup.mjs` provisions everything from environment secrets. `scripts/eas-drive.py` answers
   EAS prompts for the first interactive iOS credential setup.

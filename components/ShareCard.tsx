@@ -15,7 +15,7 @@ import { selectBook, selectEntries, selectStats, useStore } from '@/lib/store';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Entry } from '@/lib/types';
 
-// Rendered at half size in points and captured at 1080 x 1350 px (4:5), what Messenger shows fully.
+// 540 x 675 pt, captured at the screen scale: 1620 x 2025 px on a 3x phone, 4:5, what Messenger shows fully.
 const W = 540;
 const H = 675;
 const PAD = 36;
@@ -38,8 +38,10 @@ export function ShareCard({ target, onReady }: Props) {
     const fire = () => {
       if (fired.current) return;
       fired.current = true;
-      // The card sits outside the window, so draw its layers directly instead of snapshotting the screen.
-      const options = { format: 'png', quality: 1, result: 'tmpfile', width: 1080, height: 1350, useRenderInContext: true } as CaptureOptions;
+      // The card sits outside the window, so draw its layers directly instead of snapshotting the
+      // screen. No width/height here: the layer renderer does not scale into a requested size (the
+      // card would land in a corner), so the image is the card's own size times the screen scale.
+      const options = { format: 'png', quality: 1, result: 'tmpfile', useRenderInContext: true } as CaptureOptions;
       onReady(() => captureRef(ref, options));
     };
     // One frame after the last image reported in, so the bitmap is on screen before the capture.

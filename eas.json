@@ -7,18 +7,22 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "simulator": false }
+      "ios": {
+        "simulator": false
+      }
     },
     "production": {
       "autoIncrement": true,
-      "ios": { "resourceClass": "m-medium" }
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "$ASC_APP_ID",
-        "appleTeamId": "$APPLE_TEAM_ID",
+        "ascAppId": "6826857694",
+        "appleTeamId": "35QBHY62RV",
         "ascApiKeyPath": "$EXPO_ASC_API_KEY_PATH",
         "ascApiKeyIssuerId": "$ASC_ISSUER_ID",
         "ascApiKeyId": "$ASC_KEY_ID"

@@ -33,7 +33,7 @@ def main():
     cmd = ['npx', 'eas-cli@latest', *args]
     pid, fd = pty.fork()
     if pid == 0:
-        os.environ['CI'] = ''  # let prompts render
+        os.environ.pop('CI', None)  # let prompts render (eas-cli rejects an empty CI value)
         os.execvp(cmd[0], cmd)
     buf = b''
     answered_at = -1

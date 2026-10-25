@@ -35,6 +35,17 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
   The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
 - Not building: admin screens, read status, editing, sharing, search.
 
+Build 7 ("bedazzle", docs/PRD-build-7.md), decided with Viktor:
+
+- A unicorn companion lives bottom left on every screen. It reacts to the app and to taps, never to
+  usage data, and never appears on share cards.
+- Sound is a layer: the app is complete on mute, follows the ring switch, and is silent while the
+  mic is open. No music.
+- Motion uses the presets in lib/motion.ts. Three set pieces exist: launch, entry saved, rainbow
+  book. Do not add a fourth without Viktor.
+- Telemetry is for bugs. No usage counters, no funnels.
+- Credits: every third-party asset is listed in docs/CREDITS.md with its licence.
+
 ## Rule: validate where the artifact is produced
 
 Anything the app cannot run without is validated where the artifact is produced, never in a

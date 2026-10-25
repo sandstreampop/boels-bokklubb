@@ -44,17 +44,18 @@ Run typecheck and lint before committing. Commit to main and push; the repo is V
 
 ## When Viktor says "keys are in"
 
-The environment secrets listed in README.md are present. Do, in order:
+The environment secrets listed in README.md are present. Every step in `scripts/setup.mjs` is
+idempotent; rerun a step name after fixing its cause. Node's fetch ignores the proxy, so run every
+step with `NODE_USE_ENV_PROXY=1`.
 
-0. Node's fetch ignores the proxy: run every setup step with `NODE_USE_ENV_PROXY=1`.
-1. Already done in the first session: `supabase`, `env` (`.env` is committed) and EAS linking
-   (`extra.eas.projectId` is in app.json). Still to run: `node scripts/setup.mjs user github`.
-2. `node scripts/setup.mjs eas` in the background (20 to 30 minutes). It links the EAS project,
-   writes `extra.eas.projectId` into app.json (commit it), creates signing credentials via the App
-   Store Connect API key, builds and submits to TestFlight.
-3. `node scripts/setup.mjs testflight` to create the internal group and add the account holder.
-   The `user` step creates the family login and only needs `BOKKLUBB_PASSWORD`.
-4. Tell Viktor to install TestFlight and accept the invite on his Apple ID email. If adding testers
-   failed, tell him the two clicks in App Store Connect.
+State after the 2026-10-25 session: `supabase`, `user`, `env`, `eas` (credentials created, build 1
+submitted) and `testflight` (group "Familjen", Viktor added) are all done. EAS submit reads the app
+id and team id literally from eas.json; only the `ascApiKey*` fields expand `$VAR`.
 
-If any step fails, fix the cause and rerun that step name; every step is idempotent.
+Still open: `github`. The cloud proxy returns 403 on the GitHub Actions secrets API, so the monthly
+refresh workflow has no secrets until Viktor adds `EXPO_TOKEN`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and
+`ASC_KEY_P8_BASE64` by hand in the repo's Settings → Secrets and variables → Actions (or runs
+`node scripts/setup.mjs github` from a machine where `gh` is logged in).
+
+New builds: `npm run build:ios`, or `eas submit --platform ios --profile production --latest` to
+resubmit a finished build. Signing is already set up, so no interactive prompts are needed.

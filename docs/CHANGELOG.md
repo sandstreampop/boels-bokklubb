@@ -35,6 +35,10 @@ book and draw its cover.
   the empty cover of a book that has none.
 - Everything from the build 5 updates below.
 
+### Update 01a1740d (2026-10-25)
+
+- Drawing has a paintbrush icon so it no longer looks like the pencil for writing.
+
 ### Update 01a17403 (2026-10-25)
 
 - The shared card fills the whole picture instead of one corner.

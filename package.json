@@ -47,7 +47,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "doctor": "expo-doctor",
-    "setup": "node scripts/setup.mjs",
+    "setup": "NODE_USE_ENV_PROXY=1 node scripts/setup.mjs",
     "build:ios": "eas build --platform ios --profile production --auto-submit"
   },
   "private": true

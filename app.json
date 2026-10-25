@@ -15,7 +15,9 @@
       "infoPlist": {
         "CFBundleDisplayName": "Boels bokklubb",
         "CFBundleDevelopmentRegion": "sv",
-        "CFBundleLocalizations": ["sv"],
+        "CFBundleLocalizations": [
+          "sv"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -26,7 +28,13 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -77,7 +85,15 @@
       "typedRoutes": true
     },
     "extra": {
-      "eas": {}
-    }
+      "eas": {
+        "projectId": "5424f273-be34-41f5-9212-bbbc5382f0bb"
+      },
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      }
+    },
+    "owner": "visaros-team"
   }
 }

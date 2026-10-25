@@ -2,7 +2,7 @@
 // One-shot provisioning for Boels bokklubb. Idempotent: safe to run again.
 //
 //   node scripts/setup.mjs            run everything
-//   node scripts/setup.mjs supabase   only the Supabase part (also: env, github, eas, testflight)
+//   node scripts/setup.mjs supabase   only the Supabase part (also: user, env, github, eas, testflight)
 //
 // Reads the secrets listed in README.md from the environment. Never prints them.
 
@@ -50,7 +50,7 @@ async function api(url, init = {}) {
 let anonKey = null;
 
 async function supabase() {
-  need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN', 'OPENAI_API_KEY', 'BOKKLUBB_PASSWORD');
+  need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN', 'OPENAI_API_KEY');
   const url = process.env.SUPABASE_URL.replace(/\/$/, '');
   const ref = new URL(url).hostname.split('.')[0];
   const mgmt = `https://api.supabase.com/v1/projects/${ref}`;
@@ -77,18 +77,8 @@ async function supabase() {
   await api(`${mgmt}/config/auth`, { method: 'PATCH', headers, body: JSON.stringify({ disable_signup: true, mailer_autoconfirm: true }) });
   ok('public sign-up disabled');
 
-  log('Supabase: creating the family login');
-  const adminHeaders = { apikey: serviceKey, authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' };
-  const list = await api(`${url}/auth/v1/admin/users?page=1&per_page=200`, { headers: adminHeaders });
-  const existing = (list.users ?? []).find((u) => u.email === FAMILY_EMAIL);
-  const payload = JSON.stringify({ email: FAMILY_EMAIL, password: process.env.BOKKLUBB_PASSWORD, email_confirm: true });
-  if (existing) {
-    await api(`${url}/auth/v1/admin/users/${existing.id}`, { method: 'PUT', headers: adminHeaders, body: payload });
-    ok('family user updated');
-  } else {
-    await api(`${url}/auth/v1/admin/users`, { method: 'POST', headers: adminHeaders, body: payload });
-    ok('family user created');
-  }
+  if (process.env.BOKKLUBB_PASSWORD) await familyUser(url, serviceKey);
+  else console.log('  ! BOKKLUBB_PASSWORD not set, skipping the family login (run the "user" step later)');
 
   log('Supabase: deploying the transcribe function');
   const fnDir = join(ROOT, 'supabase', 'functions', 'transcribe');
@@ -109,6 +99,33 @@ async function supabase() {
     body: JSON.stringify([{ name: 'OPENAI_API_KEY', value: process.env.OPENAI_API_KEY }]),
   });
   ok('OPENAI_API_KEY stored');
+}
+
+async function familyUser(url, serviceKey) {
+  need('BOKKLUBB_PASSWORD');
+  log('Supabase: creating the family login');
+  const adminHeaders = { apikey: serviceKey, authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' };
+  const list = await api(`${url}/auth/v1/admin/users?page=1&per_page=200`, { headers: adminHeaders });
+  const existing = (list.users ?? []).find((u) => u.email === FAMILY_EMAIL);
+  const payload = JSON.stringify({ email: FAMILY_EMAIL, password: process.env.BOKKLUBB_PASSWORD, email_confirm: true });
+  if (existing) {
+    await api(`${url}/auth/v1/admin/users/${existing.id}`, { method: 'PUT', headers: adminHeaders, body: payload });
+    ok('family user updated');
+  } else {
+    await api(`${url}/auth/v1/admin/users`, { method: 'POST', headers: adminHeaders, body: payload });
+    ok('family user created');
+  }
+}
+
+async function user() {
+  need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
+  const url = process.env.SUPABASE_URL.replace(/\/$/, '');
+  const ref = new URL(url).hostname.split('.')[0];
+  const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` };
+  const keys = await api(`https://api.supabase.com/v1/projects/${ref}/api-keys?reveal=true`, { headers });
+  const serviceKey = keys.find((k) => k.name === 'service_role' && k.api_key)?.api_key ?? keys.find((k) => k.type === 'secret' && k.api_key)?.api_key;
+  if (!serviceKey) throw new Error('service_role key not found');
+  await familyUser(url, serviceKey);
 }
 
 function env() {
@@ -258,6 +275,7 @@ async function testflight() {
 async function main() {
   console.log(`Boels bokklubb setup for ${BUNDLE_ID}`);
   if (want('supabase')) await supabase();
+  if (steps.includes('user')) await user();
   if (want('env')) env();
   if (want('github')) github();
   if (want('eas')) eas();

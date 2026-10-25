@@ -45,11 +45,14 @@ Run typecheck and lint before committing. Commit to main and push; the repo is V
 
 The environment secrets listed in README.md are present. Do, in order:
 
-1. `npm ci`, then `node scripts/setup.mjs supabase env github` and commit the written `.env`.
+0. Node's fetch ignores the proxy: run every setup step with `NODE_USE_ENV_PROXY=1`.
+1. Already done in the first session: `supabase`, `env` (`.env` is committed) and EAS linking
+   (`extra.eas.projectId` is in app.json). Still to run: `node scripts/setup.mjs user github`.
 2. `node scripts/setup.mjs eas` in the background (20 to 30 minutes). It links the EAS project,
    writes `extra.eas.projectId` into app.json (commit it), creates signing credentials via the App
    Store Connect API key, builds and submits to TestFlight.
 3. `node scripts/setup.mjs testflight` to create the internal group and add the account holder.
+   The `user` step creates the family login and only needs `BOKKLUBB_PASSWORD`.
 4. Tell Viktor to install TestFlight and accept the invite on his Apple ID email. If adding testers
    failed, tell him the two clicks in App Store Connect.
 

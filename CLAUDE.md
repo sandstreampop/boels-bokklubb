@@ -168,13 +168,12 @@ State after the 2026-10-25 session: `supabase`, `user`, `env`, `eas` (credential
 submitted) and `testflight` (group "Familjen", Viktor added) are all done. EAS submit reads the app
 id and team id literally from eas.json; only the `ascApiKey*` fields expand `$VAR`.
 
-Still open: `github`. The cloud proxy returns 403 on the GitHub Actions secrets API, so
-`check.yml`, `ship.yml` and the monthly refresh are red until Viktor adds `EXPO_TOKEN`,
+`github`: the cloud proxy returns 403 on the GitHub Actions secrets API, so Viktor added `EXPO_TOKEN`,
 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`, `APPLE_TEAM_ID`, `ASC_APP_ID`, `SUPABASE_URL`
-and `SUPABASE_ACCESS_TOKEN` by hand in the repo's Settings → Secrets and variables → Actions (or
-runs `node scripts/setup.mjs github` from a machine where `gh` is logged in). Until then a failed
-Ship run is rerun from the Actions tab once the secrets are in; nothing is lost, the Unreleased
-lines wait.
+and `SUPABASE_ACCESS_TOKEN` by hand. Done 2026-10-25: they live in the GitHub environment named `main` (Settings →
+Environments), which every workflow job declares with `environment: main`; a secret added as a
+plain repository secret would also work. A failed Ship run is rerun from the Actions tab; nothing
+is lost, the Unreleased lines wait.
 
 The app checks for an update on every launch and waits up to 3 s for it, so a shipped update is
 live on the phone after one relaunch; `npm run logs` shows the running update id in the `app`

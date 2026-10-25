@@ -30,6 +30,7 @@ jobs:
   ship:
     needs: check
     runs-on: ubuntu-latest
+    environment: main
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4

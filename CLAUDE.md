@@ -31,6 +31,17 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
   The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
 - Not building: admin screens, read status, editing, sharing, search.
 
+## Rule: validate where the artifact is produced
+
+Anything the app cannot run without is validated where the artifact is produced, never in a
+checklist. If a mistake shipped once, add the check that would have refused it, in code or in CI,
+in the same fix. The first instance: `app.config.ts` throws without `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`, because `eas update --environment production` ignores the
+committed `.env` and reads EAS environment variables (two updates shipped without them on
+2026-10-25). `scripts/setup.mjs env` keeps `.env` and the EAS variables for production, preview and
+development in step; before publishing, `EXPO_NO_DOTENV=1 npx eas-cli env:exec production "npx expo
+export --platform ios"` and a grep for `supabase.co` in `dist/` prove the bundle.
+
 ## Architecture: state machines first
 
 Every flow with more than one step is an XState v5 machine in `lib/machines/`, and screens are thin:
@@ -59,6 +70,7 @@ file header comment. Reads from the store go through `useStore(selector)` and th
   `actions.ts` what machines call to create things, `media.ts` local file cache, `sync.ts` server
   pull, `recording.ts` crash recovery, `telemetry.ts` observability, `prompts.ts` the three pools.
 - `supabase/migrations` schema and storage policies. `supabase/functions/transcribe` edge function.
+- `app.config.ts` the Expo config (refuses to evaluate without the Supabase values).
 - `scripts/setup.mjs` provisions everything from environment secrets. `scripts/eas-drive.py` answers
   EAS prompts for the first interactive iOS credential setup.
 - `.github/workflows/testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.

@@ -144,15 +144,55 @@ async function user() {
   await familyUser(url, serviceKey);
 }
 
+/**
+ * One source of truth for the two public values the app cannot run without: .env for local work,
+ * and the same values as plaintext EAS environment variables for every environment, because
+ * `eas update --environment` and `eas build` ignore .env and read those. Idempotent.
+ */
 function env() {
   need('SUPABASE_URL');
-  if (!anonKey) throw new Error('Run the supabase step first (or in the same run) so the anon key is known');
+  if (!anonKey) {
+    // Rerun of just this step: take the values from the committed .env.
+    const existing = Object.fromEntries(
+      readFileSync(join(ROOT, '.env'), 'utf8')
+        .split('\n')
+        .filter((l) => l.includes('='))
+        .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
+    );
+    anonKey = existing.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? null;
+    if (!anonKey) throw new Error('Run the supabase step first (or in the same run) so the anon key is known');
+  }
   log('Writing .env with public app config');
   writeFileSync(
     join(ROOT, '.env'),
     `EXPO_PUBLIC_SUPABASE_URL=${projectUrl()}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${anonKey}\n`,
   );
   ok('.env written (public values, commit it)');
+
+  need('EXPO_TOKEN');
+  log('EAS: environment variables for production, preview and development');
+  const values = { EXPO_PUBLIC_SUPABASE_URL: projectUrl(), EXPO_PUBLIC_SUPABASE_ANON_KEY: anonKey };
+  for (const environment of ['production', 'preview', 'development']) {
+    for (const [name, value] of Object.entries(values)) {
+      const create = spawnSync(
+        'npx',
+        ['eas-cli@latest', 'env:create', '--environment', environment, '--scope', 'project', '--visibility', 'plaintext', '--name', name, '--value', value, '--non-interactive'],
+        { cwd: ROOT, encoding: 'utf8', env: process.env },
+      );
+      if (create.status === 0) {
+        ok(`${environment} ${name} created`);
+        continue;
+      }
+      if (!/already exists/i.test(`${create.stdout}${create.stderr}`)) throw new Error(`eas env:create ${environment} ${name} failed: ${(create.stderr || create.stdout).slice(-400)}`);
+      const update = spawnSync(
+        'npx',
+        ['eas-cli@latest', 'env:update', '--variable-name', name, '--variable-environment', environment, '--value', value, '--non-interactive'],
+        { cwd: ROOT, encoding: 'utf8', env: process.env },
+      );
+      if (update.status !== 0) throw new Error(`eas env:update ${environment} ${name} failed: ${(update.stderr || update.stdout).slice(-400)}`);
+      ok(`${environment} ${name} updated`);
+    }
+  }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -194,8 +234,8 @@ function easEnv() {
 function eas() {
   const e = easEnv();
   log('EAS: linking project');
-  const app = JSON.parse(readFileSync(join(ROOT, 'app.json'), 'utf8'));
-  if (!app.expo.extra?.eas?.projectId) {
+  const app = readFileSync(join(ROOT, 'app.config.ts'), 'utf8');
+  if (!/projectId/.test(app)) {
     execSync('npx eas-cli@latest init --force --non-interactive', { cwd: ROOT, stdio: 'inherit', env: e });
   }
   ok('project linked');

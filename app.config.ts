@@ -1,5 +1,33 @@
-{
-  "expo": {
+// The app config, as code so it can refuse to evaluate without the Supabase values. Every
+// `expo export` (which every `eas update` runs), `eas build`, `expo start` and `expo-doctor`
+// evaluates this file first, so no bundle, build or dev server can exist without them. Locally the
+// values come from the committed .env; on EAS from the project's environment variables, which
+// scripts/setup.mjs env keeps in step with .env. See docs/PRD-changelog.md, "Invariant".
+
+import type { ExpoConfig } from 'expo/config';
+
+function required(name: string): string {
+  const value = process.env[name] ?? '';
+  if (!value.trim()) {
+    throw new Error(
+      `${name} is empty. The app cannot run without it. Locally it comes from .env (written by ` +
+        `scripts/setup.mjs env); on EAS from the environment variables of the environment being ` +
+        `built or updated (npx eas-cli env:list --environment production).`,
+    );
+  }
+  return value.trim();
+}
+
+const supabaseUrl = required('EXPO_PUBLIC_SUPABASE_URL');
+if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
+  throw new Error(`EXPO_PUBLIC_SUPABASE_URL must look like https://<ref>.supabase.co, got "${supabaseUrl}"`);
+}
+const anonKey = required('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+if (anonKey.length < 40) {
+  throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is too short to be a Supabase key');
+}
+
+const config: ExpoConfig =   {
     "name": "Boels bokklubb",
     "slug": "boels-bokklubb",
     "scheme": "boelsbokklubb",
@@ -104,5 +132,6 @@
     "runtimeVersion": {
       "policy": "fingerprint"
     }
-  }
-}
+  };
+
+export default config;

@@ -6,6 +6,13 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+What to test: inget nytt i appen; öppna webblänken på telefonen.
+
+- Boels bokklubb is on the web for relatives: a secret link and a four-digit code open the shelf,
+  with the rainbow count, the rings and the stars, read only. The book page and the totals come
+  next.
+- Nothing new in the app itself.
+
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so

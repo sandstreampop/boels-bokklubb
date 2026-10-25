@@ -169,16 +169,7 @@ export const prompts: Record<PromptPool, readonly string[]> = {
   ],
 };
 
-export const BLANK = '___';
-
-export const isFillIn = (prompt: string | null | undefined): prompt is string => !!prompt && prompt.includes(BLANK);
-
-/** A write prompt split around its blank, for rendering her text inside it. */
-export function splitFillIn(prompt: string): { before: string; after: string } {
-  const i = prompt.indexOf(BLANK);
-  if (i < 0) return { before: prompt, after: '' };
-  return { before: prompt.slice(0, i), after: prompt.slice(i + BLANK.length) };
-}
+export { BLANK, isFillIn, splitFillIn } from './fillIn';
 
 /** Random prompt from a pool, never the one shown last time. */
 export function pickPrompt(pool: PromptPool): string {

@@ -1,7 +1,8 @@
 # Every push and pull request: the app must typecheck, lint, pass expo-doctor, have a changelog
-# line for any change Boel would see, and bundle with its Supabase config under the EAS production
-# environment. On main this runs as the first job of ship.yml, which ships only when it passes.
-# Secrets: EXPO_TOKEN (for the bundle proof; red until Viktor adds it in Settings → Secrets).
+# line for any change Boel or a relative would see, bundle with its Supabase config under the EAS
+# production environment, and the web version must build and show its screens in Chromium with
+# the fixture (scripts/web.mjs check). On main this runs as the first job of ship.yml, which ships
+# only when it passes. Secrets: EXPO_TOKEN (for the bundle proof).
 name: Check
 
 on:
@@ -27,9 +28,13 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npx expo-doctor
-      - name: Changelog line for every change Boel sees
+      - name: Changelog line for every change Boel or a relative sees
         run: node scripts/changelog.mjs check
       - name: The bundle carries its Supabase config (EAS production environment)
         run: node scripts/ship.mjs prove
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Chromium for the web check
+        run: npx playwright install --with-deps chromium
+      - name: The web version builds and shows its screens
+        run: node scripts/web.mjs check

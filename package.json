@@ -48,12 +48,16 @@
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
-    "typescript": "~6.0.3"
+    "playwright": "1.63.0",
+    "typescript": "~6.0.3",
+    "vite": "8.3.5"
   },
   "scripts": {
     "start": "expo start",
     "ios": "expo start --ios",
-    "web": "expo start --web",
+    "web": "node scripts/web.mjs dev",
+    "web:build": "node scripts/web.mjs build",
+    "web:check": "node scripts/web.mjs check",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "doctor": "expo-doctor",

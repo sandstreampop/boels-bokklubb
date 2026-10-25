@@ -6,8 +6,9 @@ speech-to-text edge function. Distributed to the family through TestFlight inter
 
 Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust memory for Expo APIs).
 The plan lives in docs/ROADMAP.md; build specs are docs/PRD-build-6.md, docs/PRD-build-7.md and
-next docs/PRD-build-8.md (the read-only web version), and docs/PRD-changelog.md is the shipping pipeline (implemented 2026-10-25: sessions push, CI
-ships). Start there. Telemetry is for finding bugs, never for measuring usage.
+docs/PRD-build-8.md (the read-only web version, `web/`, landed in steps from 2026-10-25), and
+docs/PRD-changelog.md is the shipping pipeline (implemented 2026-10-25: sessions push, CI ships).
+Start there. Telemetry is for finding bugs, never for measuring usage.
 
 ## Product rules, decided with Viktor
 
@@ -37,6 +38,9 @@ ships). Start there. Telemetry is for finding bugs, never for measuring usage.
 - One shared family login (email `familjen@boelsbokklubb.app`, password from `BOKKLUBB_PASSWORD`).
   The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
 - Not building: admin screens, read status, editing, sharing, search.
+- The web version is the app without create actions: library, book page, stats. One secret link,
+  one four-digit PIN separate from the family password. No accounts, no replies, no share, no
+  notifications, nothing in the app. No unicorn, no sounds.
 
 Build 7 ("bedazzle", docs/PRD-build-7.md), decided with Viktor:
 
@@ -99,6 +103,12 @@ file header comment. Reads from the store go through `useStore(selector)` and th
   EAS prompts for the first interactive iOS credential setup. `scripts/ship.mjs` ships (CI and the
   escape hatch), `scripts/changelog.mjs` reads and writes docs/CHANGELOG.md, `scripts/asc.mjs` talks
   to App Store Connect (processing state, "What to Test"), `scripts/eas.mjs` wraps eas-cli.
+- `web/` the read-only web version for relatives, a static Vite page on GitHub Pages. It talks only
+  to the `feed` edge function (`supabase/functions/feed`) and imports only React-Native-free modules
+  from `lib/` (`theme.ts`, `format.ts`, `fillIn.ts`; `scripts/web.mjs` refuses anything else).
+  `web/fixture.json` stands in for the function in `npm run web` and in the check.
+- `scripts/supabase.mjs` the Management API (migrations, function deploys, secrets), used by
+  setup.mjs and ship.mjs. `scripts/web.mjs` dev, build and check of the web version.
 - `.github/workflows/check.yml` on every push and PR, `ship.yml` on push to main (see Shipping),
   `testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.
 
@@ -111,7 +121,9 @@ with the breadcrumbs before them. When Viktor reports something broke: `npm run 
 then `npm run logs -- --session <id>` for the full trail of that launch. New code must log through
 `info`/`warn`/`captureError`/`traced`, never swallow an error silently, and use `useScreen` in new
 screens. Run `npx expo-doctor` before every build: a missing native peer dependency crashes a
-TestFlight build without any JS error.
+TestFlight build without any JS error. The web version logs errors through the `feed` function
+into `app_events` (source `feed`, `npm run logs -- --event feed` and `--event web`), never page
+loads or plays.
 
 ## Shipping: sessions push, CI ships
 
@@ -123,10 +135,16 @@ says `[native]`), a TestFlight build with migrations applied first. Runs queue, 
 no longer publish each other's half-done tree. Sessions do not run `npm run update` or
 `npm run build:ios` unless Viktor asks; they are the manual escape hatch and call the same script.
 
-- Every commit that changes what Boel sees adds a line under `## Unreleased` in docs/CHANGELOG.md,
-  in Viktor's words, one sentence, starting with the change (a fix says what works now), no file
-  or machine names. `check.yml` refuses a push that changes app/, components/, lib/ or assets/
-  without one. A native build also needs one line `What to test: …` first.
+- Every commit that changes what Boel or a relative sees adds a line under `## Unreleased` in
+  docs/CHANGELOG.md, in Viktor's words, one sentence, starting with the change (a fix says what
+  works now), no file or machine names. `check.yml` refuses a push that changes app/, components/,
+  lib/, assets/, web/ or supabase/functions/feed/ without one. A native build also needs one line
+  `What to test: …` first.
+- A change under `web/` or `supabase/functions/feed/` deploys the page to GitHub Pages and the
+  function to Supabase (`scripts/ship.mjs`, the `deploy-pages` job). Its changelog lines land
+  under `### Web`; a push that also changes the app keeps them in the update or build section.
+  Before pushing a web change: `npm run web:check` (build, then every screen in Playwright
+  Chromium with the fixture), which check.yml runs too.
 - On ship the Unreleased lines become `### Update <id> (date)` under the current build, or
   `## x.y.0 (build N, date, TestFlight)` for a native build, committed as `Changelog: …` with
   `[skip ci]` and pushed. The update message on EAS is the same lines, prefixed with the version.
@@ -146,6 +164,9 @@ no longer publish each other's half-done tree. Sessions do not run `npm run upda
     npm run migrate     # apply supabase/migrations through the Management API
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
     node scripts/changelog.mjs check   # what check.yml asks: a changelog line for every change Boel sees
+    npm run web         # the web version on localhost:5173 with the fixture answering for the feed function
+    npm run web:check   # what check.yml asks of the web version: typecheck, imports, build, every screen in Chromium
+    node scripts/setup.mjs feed        # store FEED_TOKEN and FEED_PIN as function secrets, deploy feed, print the link
     npm run update      # manual escape hatch: the over-the-air ship CI would do (refuses without Unreleased lines)
     npm run build:ios   # manual escape hatch: the native ship (bump, changelog, build, submit, What to Test, 40 min)
     NODE_USE_ENV_PROXY=1 node --no-warnings scripts/ship.mjs prove   # the bundle proof alone
@@ -174,6 +195,12 @@ and `SUPABASE_ACCESS_TOKEN` by hand. Done 2026-10-25: they live in the GitHub en
 Environments), which every workflow job declares with `environment: main`; a secret added as a
 plain repository secret would also work. A failed Ship run is rerun from the Actions tab; nothing
 is lost, the Unreleased lines wait.
+
+The web version (build 8): `npm run setup feed` with `FEED_TOKEN` (128 random bits, base64url)
+and `FEED_PIN` (four digits, not the family password) set stores them as function secrets and
+prints the link and the PIN; rerun with new values to rotate. GitHub Pages is set to "GitHub
+Actions" under Settings → Pages, once by Viktor; `ship.yml` then publishes `web/dist` on every
+web change. Nothing web-related passes through CI secrets.
 
 The app checks for an update on every launch and waits up to 3 s for it, so a shipped update is
 live on the phone after one relaunch; `npm run logs` shows the running update id in the `app`

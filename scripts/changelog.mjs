@@ -13,6 +13,7 @@
 //   ## Unreleased
 //   ## 1.1.0 (build 8, 2026-11-01, TestFlight)     a native build: version, build number, date
 //   ### Update 01a1744f (2026-10-25)               an over-the-air update, under the build it belongs to
+//   ### Web (2026-10-26)                           a ship of the web version only, under the current build
 //   ## Build 7 (2026-10-25, TestFlight)            builds before the version numbers started
 
 import { spawnSync } from 'node:child_process';
@@ -22,8 +23,12 @@ import { join } from 'node:path';
 export const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 export const CHANGELOG = join(ROOT, 'docs', 'CHANGELOG.md');
 
-/** Paths whose change means Boel sees something different, so a changelog line is required. */
-export const APP_PATHS = ['app/', 'components/', 'lib/', 'assets/'];
+/** Paths whose change means Boel sees something different on her phone: an over-the-air update. */
+export const IOS_PATHS = ['app/', 'components/', 'lib/', 'assets/'];
+/** Paths whose change means relatives see something different: the page and the feed function are deployed. */
+export const WEB_PATHS = ['web/', 'supabase/functions/feed/'];
+/** Paths whose change means someone sees something different, so a changelog line is required. */
+export const APP_PATHS = [...IOS_PATHS, ...WEB_PATHS];
 /** Paths whose change means a new TestFlight build is needed rather than an over-the-air update. */
 export const NATIVE_PATHS = ['package.json', 'package-lock.json', 'app.config.ts', 'eas.json', 'supabase/migrations/'];
 export const MIGRATION_PATH = 'supabase/migrations/';
@@ -72,6 +77,7 @@ export function hasWhatToTest(body) {
  * Moves the Unreleased lines into a new section and writes the file.
  *   release({ kind: 'build', version: '1.1.0', build: 8 })   → `## 1.1.0 (build 8, date, TestFlight)` right under Unreleased
  *   release({ kind: 'update', id: '01a1744f-…' })            → `### Update 01a1744f (date)` under the current build's own lines
+ *   release({ kind: 'web' })                                 → `### Web (date)` in the same place
  * Returns the new section's title and body.
  */
 export function release(what, date = today()) {
@@ -85,8 +91,8 @@ export function release(what, date = today()) {
   if (what.kind === 'build') {
     title = `## ${what.version} (build ${what.build}, ${date}, TestFlight)`;
     out = `${text.slice(0, bodyStart)}\n${title}\n\n${body}\n\n${rest}`;
-  } else if (what.kind === 'update') {
-    title = `### Update ${what.id.slice(0, 8)} (${date})`;
+  } else if (what.kind === 'update' || what.kind === 'web') {
+    title = what.kind === 'web' ? `### Web (${date})` : `### Update ${what.id.slice(0, 8)} (${date})`;
     // Under the current build: after its heading and its own lines, before its first update.
     const buildAt = rest.search(/^## /m);
     if (buildAt < 0) throw new Error('docs/CHANGELOG.md has no build section to file the update under');
@@ -132,6 +138,8 @@ export function changesSince(commit = lastShipCommit()) {
     subject,
     files,
     app: touches(APP_PATHS),
+    ios: touches(IOS_PATHS),
+    web: touches(WEB_PATHS),
     native: touches(NATIVE_PATHS),
     migrations: touches([MIGRATION_PATH]),
     forcedNative: /\[native\]/i.test(subject),
@@ -184,7 +192,7 @@ if (self) {
     } else if (cmd === 'shipped') {
       const c = changesSince();
       console.log(`last ship: ${c.commit}\nsince then: ${c.files.length ? c.files.join('\n  ') : '(nothing)'}`);
-      console.log(`native: ${c.native.length || c.forcedNative ? 'yes' : 'no'}  migrations: ${c.migrations.length ? 'yes' : 'no'}`);
+      console.log(`native: ${c.native.length || c.forcedNative ? 'yes' : 'no'}  migrations: ${c.migrations.length ? 'yes' : 'no'}  web: ${c.web.length ? 'yes' : 'no'}`);
     } else {
       console.error('usage: node scripts/changelog.mjs check | unreleased | shipped');
       process.exit(2);

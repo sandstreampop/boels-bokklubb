@@ -11,15 +11,20 @@
 //   node scripts/ship.mjs build --refresh   the monthly rebuild: adds "Monthly refresh, nothing new" when Unreleased is empty
 //   node scripts/ship.mjs prove             only the bundle proof (check.yml runs this on every push)
 //   node scripts/ship.mjs submit            resubmit the latest finished build
+//   node scripts/ship.mjs web               the web version alone: deploy the feed function, build the page, changelog
 //
-// Both ship modes refuse to run when `## Unreleased` in docs/CHANGELOG.md is empty: writing the
+// Every ship mode refuses to run when `## Unreleased` in docs/CHANGELOG.md is empty: writing the
 // line is part of shipping. On success the Unreleased lines move into a dated section and that
 // change is committed as `Changelog: …` and pushed, so the next run knows where the last ship was.
 //
-// Update or build? Anything in app/, components/, lib/ or assets is an update. package.json,
+// Update, build or web? Anything in app/, components/, lib/ or assets is an update. package.json,
 // package-lock.json, app.config.ts, eas.json or a migration means a native build (the runtime
 // version is a fingerprint of the native project, so an update is only served to builds it
-// matches), and so does `[native]` in the commit subject.
+// matches), and so does `[native]` in the commit subject. Anything under web/ or
+// supabase/functions/feed/ is the web version (docs/PRD-build-8.md): the function is deployed
+// through the Management API, the page is built into web/dist and `web=true` is written to
+// GITHUB_OUTPUT so ship.yml's deploy-pages job puts it on GitHub Pages. A push that changes both
+// does both; a web-only push files its lines as `### Web (date)`.
 
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
@@ -30,6 +35,7 @@ import { join } from 'node:path';
 import { setWhatsNew, waitForProcessedBuild } from './asc.mjs';
 import { ROOT, asPlainText, changesSince, hasWhatToTest, release, unreleased } from './changelog.mjs';
 import { dotenv, eas, easEnv } from './eas.mjs';
+import { deployFunction, migrate } from './supabase.mjs';
 
 const args = process.argv.slice(2);
 const [mode = 'build'] = args;
@@ -288,7 +294,37 @@ async function waitForBuild(id, apple) {
   fail(`EAS build ${id} did not finish within an hour`);
 }
 
-/** CI entry: update, build, or nothing, from the diff since the last ship. */
+// ---- the web version -----------------------------------------------------------------------------
+
+/**
+ * Deploys the feed function and builds the page into web/dist, then tells ship.yml to put it on
+ * GitHub Pages. The function goes first: the page that is about to go live talks to it. The
+ * changelog section is the caller's: a web-only ship files `### Web`, a ship that also updates
+ * or builds the app keeps the lines in that section.
+ */
+async function shipWeb() {
+  needSecrets('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
+  log('Supabase: deploying the feed function');
+  await deployFunction('feed');
+  ok('feed deployed');
+  log('Building the web page into web/dist');
+  const r = spawnSync('node', ['--no-warnings', join(ROOT, 'scripts', 'web.mjs'), 'build'], { cwd: ROOT, stdio: 'inherit' });
+  if (r.status !== 0) fail('the web page did not build; the function is deployed, the page was not published');
+  if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, 'web=true\n', { flag: 'a' });
+  ok('web/dist ready for GitHub Pages');
+}
+
+/** A web-only ship: the function, the page, and the Unreleased lines filed as `### Web (date)`. */
+async function web() {
+  const body = linesToShip();
+  await shipWeb();
+  const { title } = release({ kind: 'web' });
+  ok(`changelog: ${title}`);
+  commit(`Changelog: web ${asPlainText(body).split('\n')[0].slice(0, 60)}`, ['docs/CHANGELOG.md']);
+  push();
+}
+
+/** CI entry: update, build, web, or nothing, from the diff since the last ship. */
 async function auto() {
   const c = changesSince();
   if (c.headIsShip) {
@@ -302,13 +338,21 @@ async function auto() {
     return;
   }
   const native = c.native.length > 0 || c.forcedNative;
-  log(`Since the last ship (${c.commit.slice(0, 8)}): ${c.files.length} file(s) changed; ${native ? 'native build' : 'over-the-air update'}`);
+  const webOnly = c.web.length > 0 && !native && c.ios.length === 0;
+  const what = native ? 'native build' : webOnly ? 'web version only' : 'over-the-air update';
+  log(`Since the last ship (${c.commit.slice(0, 8)}): ${c.files.length} file(s) changed; ${what}${c.web.length && !webOnly ? ' and the web version' : ''}`);
   if (c.native.length) console.log(`  native because: ${c.native.join(', ')}`);
+  if (c.web.length) console.log(`  web because: ${c.web.join(', ')}`);
   if (c.migrations.length) {
+    needSecrets('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
     log('Supabase: applying migrations first');
-    const r = spawnSync('node', ['--no-warnings', join(ROOT, 'scripts', 'setup.mjs'), 'migrate'], { cwd: ROOT, stdio: 'inherit' });
-    if (r.status !== 0) fail('migrations failed; nothing shipped');
+    await migrate(ok);
   }
+  if (webOnly) {
+    await web();
+    return;
+  }
+  if (c.web.length) await shipWeb();
   if (native) await build();
   else update();
 }
@@ -323,5 +367,6 @@ function submit() {
   else if (mode === 'build') await build();
   else if (mode === 'prove') proveBundle();
   else if (mode === 'submit') submit();
+  else if (mode === 'web') await web();
   else fail(`unknown mode ${mode}; see the header of scripts/ship.mjs`);
 })().catch((err) => fail(err.message));

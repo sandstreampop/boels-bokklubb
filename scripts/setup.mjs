@@ -3,32 +3,29 @@
 //
 //   node scripts/setup.mjs            run everything
 //   node scripts/setup.mjs supabase   only the Supabase part (also: migrate, user, env, github, eas, testflight)
+//   node scripts/setup.mjs feed       the web version's secrets: FEED_TOKEN and FEED_PIN (prints the link and the PIN)
 //
-// Reads the secrets listed in README.md from the environment. Never prints them.
+// Reads the secrets listed in README.md from the environment. Never prints them, except the feed
+// step, whose link and PIN are for relatives.
 
 import { execSync, spawnSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { ascToken } from './asc.mjs';
 import { easEnv as withDotenv } from './eas.mjs';
+import { ROOT, api, apiKeys, deployFunction, migrate as applyMigrations, projectUrl, setSecrets } from './supabase.mjs';
 
-const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const FAMILY_EMAIL = 'familjen@boelsbokklubb.app';
 const REPO = 'sandstreampop/boels-bokklubb';
+const WEB_URL = 'https://sandstreampop.github.io/boels-bokklubb/';
 const BUNDLE_ID = 'com.sandstreampop.boelsbokklubb';
 // Supabase requires six characters; the family password can be shorter. The app applies the same prefix.
 const serverPassword = (typed) => `bokklubb-${typed}`;
 
 const steps = process.argv.slice(2);
-
-/** Accepts the project URL, or any URL under it (people paste the REST endpoint), and returns the base. */
-function projectUrl() {
-  const u = new URL(process.env.SUPABASE_URL);
-  return `${u.protocol}//${u.hostname}`;
-}
 const want = (name) => steps.length === 0 || steps.includes(name);
 
 function need(...names) {
@@ -38,22 +35,6 @@ function need(...names) {
 
 const log = (msg) => console.log(`\n▶ ${msg}`);
 const ok = (msg) => console.log(`  ✓ ${msg}`);
-
-async function api(url, init = {}) {
-  const res = await fetch(url, init);
-  const text = await res.text();
-  let body;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = text;
-  }
-  if (!res.ok) {
-    const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`${init.method ?? 'GET'} ${url} -> ${res.status}: ${detail.slice(0, 500)}`);
-  }
-  return body;
-}
 
 // ------------------------------------------------------------------------------------------------
 // Supabase
@@ -70,12 +51,9 @@ async function supabase() {
   await migrate();
 
   log('Supabase: reading API keys');
-  const keys = await api(`${mgmt}/api-keys?reveal=true`, { headers });
-  const pick = (names, type) =>
-    keys.find((k) => names.includes(k.name) && k.api_key)?.api_key ?? keys.find((k) => k.type === type && k.api_key)?.api_key;
-  anonKey = pick(['anon'], 'publishable');
-  const serviceKey = pick(['service_role'], 'secret');
-  if (!anonKey || !serviceKey) throw new Error('Could not find anon and service_role keys');
+  const keys = await apiKeys();
+  anonKey = keys.anon;
+  const serviceKey = keys.service;
   ok('anon and service_role keys found');
 
   log('Supabase: locking down sign-ups');
@@ -86,38 +64,46 @@ async function supabase() {
   else console.log('  ! BOKKLUBB_PASSWORD not set, skipping the family login (run the "user" step later)');
 
   log('Supabase: deploying the transcribe function');
-  const fnDir = join(ROOT, 'supabase', 'functions', 'transcribe');
-  const form = new FormData();
-  form.append('file', new Blob([readFileSync(join(fnDir, 'index.ts'))], { type: 'text/typescript' }), 'index.ts');
-  form.append('metadata', JSON.stringify({ entrypoint_path: 'index.ts', name: 'transcribe', verify_jwt: false }));
-  await api(`${mgmt}/functions/deploy?slug=transcribe`, {
-    method: 'POST',
-    headers: { authorization: headers.authorization },
-    body: form,
-  });
+  await deployFunction('transcribe');
   ok('transcribe deployed');
 
   log('Supabase: setting function secrets');
-  await api(`${mgmt}/secrets`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify([{ name: 'OPENAI_API_KEY', value: process.env.OPENAI_API_KEY }]),
-  });
+  await setSecrets({ OPENAI_API_KEY: process.env.OPENAI_API_KEY });
   ok('OPENAI_API_KEY stored');
 }
 
 /** Applies every file in supabase/migrations, in order. All of them are written to be rerunnable. */
 async function migrate() {
   need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
-  const ref = new URL(projectUrl()).hostname.split('.')[0];
-  const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'content-type': 'application/json' };
   log('Supabase: applying migrations');
-  const dir = join(ROOT, 'supabase', 'migrations');
-  for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
-    const query = readFileSync(join(dir, f), 'utf8');
-    await api(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers, body: JSON.stringify({ query }) });
-    ok(f);
+  await applyMigrations(ok);
+}
+
+/**
+ * The web version's secrets (docs/PRD-build-8.md): the secret link's token and the four-digit
+ * PIN, stored as function secrets and nowhere else. Rerun with new values to rotate; every
+ * device then has to enter the PIN again from the new link. Deploys the feed function too.
+ */
+async function feed() {
+  need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
+  const token = (process.env.FEED_TOKEN ?? '').trim();
+  const pin = (process.env.FEED_PIN ?? '').trim();
+  if (!/^[A-Za-z0-9_-]{22,}$/.test(token)) {
+    throw new Error(
+      'FEED_TOKEN must be at least 128 random bits as base64url (22+ characters of A-Z a-z 0-9 - _). Make one with:\n' +
+        "  node -e \"console.log(require('crypto').randomBytes(16).toString('base64url'))\"",
+    );
   }
+  if (!/^\d{4}$/.test(pin)) throw new Error('FEED_PIN must be exactly four digits, and not the family password');
+  log('Supabase: deploying the feed function');
+  await deployFunction('feed');
+  ok('feed deployed');
+  log('Supabase: storing FEED_TOKEN and FEED_PIN as function secrets');
+  await setSecrets({ FEED_TOKEN: token, FEED_PIN: pin });
+  ok('stored; the function reads them on its next request');
+  console.log(`\n  Link for relatives:  ${WEB_URL}#t=${token}`);
+  console.log(`  PIN:                 ${pin}`);
+  console.log('  Send both, separately. GitHub Pages must be set to "GitHub Actions" under Settings → Pages.');
 }
 
 async function familyUser(url, serviceKey) {
@@ -138,13 +124,7 @@ async function familyUser(url, serviceKey) {
 
 async function user() {
   need('SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN');
-  const url = projectUrl();
-  const ref = new URL(url).hostname.split('.')[0];
-  const headers = { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` };
-  const keys = await api(`https://api.supabase.com/v1/projects/${ref}/api-keys?reveal=true`, { headers });
-  const serviceKey = keys.find((k) => k.name === 'service_role' && k.api_key)?.api_key ?? keys.find((k) => k.type === 'secret' && k.api_key)?.api_key;
-  if (!serviceKey) throw new Error('service_role key not found');
-  await familyUser(url, serviceKey);
+  await familyUser(projectUrl(), (await apiKeys()).service);
 }
 
 /**
@@ -326,6 +306,7 @@ async function main() {
   if (want('supabase')) await supabase();
   if (steps.includes('user')) await user();
   if (steps.includes('migrate')) await migrate();
+  if (steps.includes('feed')) await feed();
   if (want('env')) env();
   if (want('github')) github();
   if (want('eas')) eas();

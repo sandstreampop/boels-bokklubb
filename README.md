@@ -9,6 +9,8 @@ fotar och sätter stjärnor. Allt sparas i molnet och går att titta tillbaka p�
 - Supabase: Postgres (`books`, `entries`), private storage buckets (`covers`, `media`), one family
   login, and an edge function that transcribes voice notes with OpenAI.
 - Local-first: entries appear instantly and upload from a durable outbox when online.
+- A read-only web version for relatives (`web/`, Vite, GitHub Pages) behind one secret link and a
+  four-digit PIN, reading through a second edge function that hands out signed URLs.
 
 ## Secrets the setup script reads
 
@@ -23,6 +25,7 @@ Set these as environment secrets in the Claude Code cloud environment (never com
 | `SUPABASE_URL`, `SUPABASE_ACCESS_TOKEN` | Supabase project URL and personal access token |
 | `OPENAI_API_KEY` | For transcription, stored as an edge function secret |
 | `BOKKLUBB_PASSWORD` | The family password |
+| `FEED_TOKEN`, `FEED_PIN` | The web version's secret link token (128 random bits, base64url) and four-digit PIN, stored as function secrets by `node scripts/setup.mjs feed` |
 
 Then `npm run setup`, or step by step: `node scripts/setup.mjs supabase env github eas testflight`.
 

@@ -24,7 +24,28 @@ The goal is pull: Boel wants to open it, talk, write, draw, and Viktor wants to 
 
 Shipped as over-the-air slices in that order; only item 5 needs a TestFlight build.
 
-## Later: build 7 and beyond (not designed yet)
+## Build 7: "bedazzle" (after every build-6 feature has landed)
+
+A sprint that takes every interaction from simple to enchanting, the way Bolibompa or Gabby's
+Dollhouse hold a five-year-old: animation, microinteractions and sound on everything she touches.
+Not designed yet; a PRD comes after build 6 ships and we have watched her use it. Principles agreed:
+
+- Every tap answers: a squish, a sparkle, a sound. Every save celebrates. Every screen enters with
+  motion. Stars, the mic, the crayons, the shelf and the rainbow rings all get their own moment.
+- Sound is a layer, never a requirement: the app must be complete with the phone muted. Follow the
+  ring switch; nothing plays at bedtime by surprise.
+- Assets come from open-source libraries, not hand-made: candidates to evaluate are
+  [soundcn](https://www.mintlify.com/kapishdima/soundcn/introduction) (a shadcn-style registry of
+  700+ UI sounds, copied into the repo, sourced from CC0 collections, mostly Kenney),
+  [UI SFX](https://peerlist.io/romainsimon/project/ui-sfx) (MIT code, CC0 audio, a semantic
+  "success/tap/open" sound system), Kenney's CC0 audio packs directly, and Freesound filtered to
+  CC0 for the sparkles and chimes a child expects. Check each license before shipping.
+- Motion stays in Reanimated and the existing design tokens; one motion vocabulary (spring in,
+  squish on press, sparkle on reward) reused everywhere rather than a new effect per screen.
+- Performance budget: nothing that delays a tap on an iPhone 8, and the recording path stays
+  untouched by audio effects (no sound while the mic is open).
+
+## Later: build 8 and beyond (not designed yet)
 
 - Read-only feed for relatives: a web page per family link showing the same cards. Needs a share
   token, a public read path in Supabase, and a small web app. Decided to design the card first so

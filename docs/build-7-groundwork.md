@@ -87,7 +87,9 @@ did not touch.
   it closes; `micOpen(true)` when the machine enters `recording`, `micOpen(false)` on `done` and
   `unavailable`; mount `<Unicorn pose="recording" placement="inline" />` beside the timer.
 - `lib/machines/recorder.ts`: the `stop` actor restores `effectsAudioMode` instead of
-  `{ playsInSilentMode: true }`. See the open question on her own recordings below.
+  `{ playsInSilentMode: true }`.
+- `components/EntryCard.tsx`: `playsInSilentMode: true` around voice-note playback, then
+  `effectsAudioMode` back (decided, see below).
 - Build 6's writer and canvas: `setUnicornPose('writing' | 'drawing')` on open, `'home'` on close,
   `setUnicornHint('done')`, `<Unicorn pose=... placement="inline" />` below the text or canvas;
   `play('crayon')` on stroke start; nothing animates while she types.
@@ -98,13 +100,14 @@ did not touch.
 - `docs/CHANGELOG.md`: the build 7 section, with the two credit lines from docs/CREDITS.md in its
   "what to test" text.
 
-## Open questions for Viktor
+## Decided, and open questions for Viktor
 
-- **Her own recordings and the ring switch.** The recorder today leaves `playsInSilentMode: true`
-  behind, so her voice notes play with the switch on silent. If the recorder restores
-  `effectsAudioMode` as the PRD implies, voice notes follow the ring switch too. Decide: effects
-  only (the entry player sets `playsInSilentMode: true` around its own play and restores after), or
-  everything follows the switch.
+- **Her own recordings and the ring switch: decided 2026-10-25, her recordings play on silent,
+  effects do not.** The recorder's `stop` actor restores `effectsAudioMode` (ring switch obeyed).
+  The entry player in `components/EntryCard.tsx` sets `playsInSilentMode: true` right before it
+  plays a voice note and restores `effectsAudioMode` when playback ends or the card unmounts, so
+  her words always play and the pops and chimes stay quiet on a silent phone. Build 6's auto-play
+  after recording goes through the same path.
 - **The fanfare is 1.6 s**, the longest cheerful jingle in Kenney's pack; the PRD says two seconds.
 - **Build 6's `package.json`** will conflict with this branch's on merge (two new native modules
   there, one here). Resolve by keeping all three and running `npm install` to regenerate the lock.

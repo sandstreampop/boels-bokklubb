@@ -1,49 +1,29 @@
+import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
-import { addBook } from '@/lib/actions';
-import { pickPhoto } from '@/lib/images';
+import { inspect } from '@/lib/machines/inspect';
+import { newBookMachine } from '@/lib/machines/newBook';
 import { useScreen } from '@/lib/screen';
-import { captureError } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
 
 export default function NewBook() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [coverUri, setCoverUri] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
+  const [state, send] = useMachine(newBookMachine, { inspect });
+  const { title, author, coverUri, book } = state.context;
+  const canSave = state.can({ type: 'SAVE' });
   useScreen('book.new');
 
-  const canSave = title.trim().length > 0 && !saving;
-
-  const pick = async (source: 'camera' | 'library') => {
-    try {
-      const uri = await pickPhoto(source);
-      if (uri) setCoverUri(uri);
-    } catch (err) {
-      captureError('book.new.pick', err, { source });
-    }
-  };
-
-  const save = async () => {
-    if (!canSave) return;
-    setSaving(true);
-    try {
-      const book = await addBook({ title: title.trim(), author: author.trim() || null, coverUri });
-      router.replace({ pathname: '/book/[id]', params: { id: book.id } });
-    } catch (err) {
-      captureError('book.new.save', err, { hasCover: !!coverUri });
-      setSaving(false);
-    }
-  };
+  useEffect(() => {
+    if (state.matches('saved') && book) router.replace({ pathname: '/book/[id]', params: { id: book.id } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.value]);
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -63,7 +43,7 @@ export default function NewBook() {
             onPress={() => router.back()}
             haptic={false}
           />
-          <RoundButton icon="check" size={56} label="Spara" onPress={save} disabled={!canSave} />
+          <RoundButton icon="check" size={56} label="Spara" onPress={() => send({ type: 'SAVE' })} disabled={!canSave} />
         </View>
 
         <View style={styles.coverWrap}>
@@ -74,10 +54,10 @@ export default function NewBook() {
               <Icon name="photo" size={56} color={colors.pink} strokeWidth={1.8} />
             )}
             <View style={styles.coverButtons}>
-              <Pressable onPress={() => pick('camera')} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
+              <Pressable onPress={() => send({ type: 'PICK', source: 'camera' })} style={styles.coverBtn} accessibilityLabel="Fota omslaget">
                 <Icon name="camera" size={26} color={colors.pinkDeep} />
               </Pressable>
-              <Pressable onPress={() => pick('library')} style={styles.coverBtn} accessibilityLabel="Välj bild">
+              <Pressable onPress={() => send({ type: 'PICK', source: 'library' })} style={styles.coverBtn} accessibilityLabel="Välj bild">
                 <Icon name="photo" size={26} color={colors.pinkDeep} />
               </Pressable>
             </View>
@@ -88,7 +68,7 @@ export default function NewBook() {
           id="book-title"
           style={styles.title}
           value={title}
-          onChangeText={setTitle}
+          onChangeText={(t) => send({ type: 'SET_TITLE', title: t })}
           autoFocus
           autoCorrect={false}
           spellCheck={false}
@@ -104,7 +84,7 @@ export default function NewBook() {
           id="book-author"
           style={styles.author}
           value={author}
-          onChangeText={setAuthor}
+          onChangeText={(a) => send({ type: 'SET_AUTHOR', author: a })}
           autoCorrect={false}
           spellCheck={false}
           autoCapitalize="none"

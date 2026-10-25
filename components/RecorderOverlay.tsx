@@ -1,23 +1,16 @@
-import {
-  AudioModule,
-  RecordingPresets,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
+import { useMachine } from '@xstate/react';
+import { RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from './Icon';
 import { formatDuration } from '@/lib/format';
-import { clearRecordingMarker, writeRecordingMarker } from '@/lib/recording';
-import { captureError, info } from '@/lib/telemetry';
+import { inspect } from '@/lib/machines/inspect';
+import { recorderMachine } from '@/lib/machines/recorder';
 import { colors, fonts } from '@/lib/theme';
-
-const MAX_SECONDS = 10 * 60;
 
 type Props = {
   bookId: string;
@@ -28,17 +21,16 @@ type Props = {
 };
 
 /**
- * Full-screen recording. Pit of success: starts the moment it opens, and every tap anywhere stops
- * and saves. Backgrounding keeps recording (background audio mode), and a marker file means a crash
- * still produces an entry on next launch.
+ * Full-screen recording, driven by lib/machines/recorder.ts. Starts the moment it opens, and every
+ * tap anywhere stops and saves. Backgrounding keeps recording (background audio mode), and a marker
+ * file means a crash still produces an entry on next launch.
  */
 export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Props) {
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: 'document' });
-  const state = useAudioRecorderState(recorder, 250);
+  const status = useAudioRecorderState(recorder, 250);
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<'starting' | 'recording' | 'stopping'>('starting');
-  const startedAt = useRef<number>(0);
-  const finishing = useRef(false);
+  const [state, send] = useMachine(recorderMachine, { input: { bookId, recorder }, inspect });
+  const recording = state.matches('recording');
 
   const pulse = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({
@@ -46,76 +38,50 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
     opacity: 2 - pulse.value,
   }));
 
+  // Opening the overlay starts the machine. START is only accepted in idle, so this cannot double-start.
   useEffect(() => {
-    if (!visible) return;
-    finishing.current = false;
-    let cancelled = false;
-    (async () => {
-      try {
-        const perm = await AudioModule.requestRecordingPermissionsAsync();
-        if (!perm.granted) {
-          info('recording.denied', { status: perm.status });
-          onUnavailable();
-          return;
-        }
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true, allowsBackgroundRecording: true });
-        await recorder.prepareToRecordAsync();
-        if (cancelled) return;
-        recorder.record({ forDuration: MAX_SECONDS });
-        startedAt.current = Date.now();
-        info('recording.start', { bookId, uri: recorder.uri });
-        setPhase('recording');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        pulse.set(withRepeat(withTiming(1.6, { duration: 1100, easing: Easing.out(Easing.quad) }), -1, false));
-        if (recorder.uri) {
-          void writeRecordingMarker({ bookId, uri: recorder.uri, startedAt: new Date(startedAt.current).toISOString() });
-        }
-      } catch (err) {
-        captureError('recording.start', err, { bookId });
-        onUnavailable();
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (visible) send({ type: 'START' });
+  }, [visible, send]);
+
+  // Pulse and tick once we are really recording.
+  useEffect(() => {
+    if (!recording) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    pulse.set(withRepeat(withTiming(1.6, { duration: 1100, easing: Easing.out(Easing.quad) }), -1, false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [recording]);
 
   // The duration cap stopped it for us: save.
   useEffect(() => {
-    if (phase === 'recording' && !state.isRecording && state.durationMillis > 0 && Date.now() - startedAt.current > 2000) {
-      void finish();
+    if (recording && !status.isRecording && status.durationMillis > 0 && Date.now() - state.context.startedAt > 2000) {
+      send({ type: 'AUTO_STOPPED', durationMs: status.durationMillis });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isRecording]);
+  }, [status.isRecording]);
 
-  async function finish() {
-    if (finishing.current) return;
-    finishing.current = true;
-    setPhase('stopping');
-    try {
-      if (recorder.isRecording) await recorder.stop();
-    } catch (err) {
-      captureError('recording.stop', err, { bookId });
+  // Hand the result to the book page and reset for next time.
+  useEffect(() => {
+    if (state.matches('done')) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      const { uri, durationMs } = state.context;
+      if (uri) onDone(uri, durationMs);
+      else onUnavailable();
+      send({ type: 'RESET' });
+    } else if (state.matches('unavailable')) {
+      onUnavailable();
+      send({ type: 'RESET' });
     }
-    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
-    const uri = recorder.uri;
-    const durationMs = Math.max(state.durationMillis, Date.now() - startedAt.current);
-    info('recording.done', { bookId, durationMs, hasUri: !!uri });
-    clearRecordingMarker();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-    if (uri) onDone(uri, durationMs);
-    else onUnavailable();
-    setPhase('starting');
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.value]);
 
-  const seconds = Math.floor(state.durationMillis / 1000);
+  const stop = () => send({ type: 'STOP' });
+  const seconds = Math.floor(status.durationMillis / 1000);
 
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={() => void finish()}>
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={stop}>
       <Pressable
         style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 }]}
-        onPress={() => void finish()}
+        onPress={stop}
         accessibilityLabel="Stoppa och spara">
         <Text style={styles.timer}>{formatDuration(seconds * 1000)}</Text>
         <View style={styles.center}>
@@ -127,7 +93,7 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable }: Prop
         <View style={styles.stop}>
           <Icon name="stop" size={44} color={colors.pinkDeep} />
         </View>
-        {phase !== 'recording' && <View style={styles.dim} pointerEvents="none" />}
+        {!recording && <View style={styles.dim} pointerEvents="none" />}
       </Pressable>
     </Modal>
   );

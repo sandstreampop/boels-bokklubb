@@ -22,12 +22,32 @@ Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust me
   The typed password is short digits; both app and setup script prefix it with `bokklubb-` for Supabase.
 - Not building: admin screens, read status, editing, sharing, search.
 
+## Architecture: state machines first
+
+Every flow with more than one step is an XState v5 machine in `lib/machines/`, and screens are thin:
+they render machine state and send events. Shared data lives in an `@xstate/store` store
+(`lib/store.ts`). This is a rule, not a preference: it is what keeps the app understandable for
+Viktor and for the next session, and the store's cached selectors make the render-loop crash of
+build 1 impossible by construction.
+
+- `machines/app.ts` boot, session, sign-in. Provided at the root as `AppActor`.
+- `machines/outbox.ts` the durable upload queue (one module-level actor; `enqueue` from actions).
+- `machines/recorder.ts` permission → prepare → recording → stopping → done. Owned by RecorderOverlay.
+- `machines/newBook.ts` the add-book form. `machines/book.ts` the book page: text, photo, record, rate.
+- `machines/inspect.ts` turns every transition into a telemetry breadcrumb and reports actor errors.
+  Pass `{ inspect }` to every `useMachine`, `createActor` and `createActorContext`.
+
+Rules: side effects live in machine actions or invoked promise actors, never in `useEffect` chains
+(the only allowed effects are bridging a machine to a prop or a native hook, as RecorderOverlay does).
+A new screen gets a machine; a new background process gets an actor. Draw the state diagram in the
+file header comment. Reads from the store go through `useStore(selector)` and the `select*` helpers.
+
 ## Layout
 
 - `app/` routes: `index.tsx` library, `book/new.tsx`, `book/[id].tsx`, `_layout.tsx` auth gate.
-- `components/` UI. `lib/` data: `store.ts` local-first state, `outbox.ts` durable upload queue,
-  `actions.ts` what screens call, `media.ts` local file cache, `sync.ts` server pull, `recording.ts`
-  crash recovery.
+- `components/` UI. `lib/` data: `store.ts` local-first state, `machines/` flows (see above),
+  `actions.ts` what machines call to create things, `media.ts` local file cache, `sync.ts` server
+  pull, `recording.ts` crash recovery, `telemetry.ts` observability.
 - `supabase/migrations` schema and storage policies. `supabase/functions/transcribe` edge function.
 - `scripts/setup.mjs` provisions everything from environment secrets. `scripts/eas-drive.py` answers
   EAS prompts for the first interactive iOS credential setup.

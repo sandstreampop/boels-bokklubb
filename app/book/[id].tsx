@@ -1,6 +1,7 @@
+import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -18,58 +19,33 @@ import { RainbowFill } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
 import { StarRating } from '@/components/StarRating';
-import { addAudioEntry, addPhotoEntry, addTextEntry, rateBook } from '@/lib/actions';
-import { pickPhoto } from '@/lib/images';
+import { bookMachine } from '@/lib/machines/book';
+import { inspect } from '@/lib/machines/inspect';
 import { useMediaUri } from '@/lib/media';
 import { useScreen } from '@/lib/screen';
-import { useStore } from '@/lib/store';
+import { selectBook, selectEntries, useStore } from '@/lib/store';
 import { pullEntries } from '@/lib/sync';
-import { captureError, warn } from '@/lib/telemetry';
+import { warn } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
-import type { Entry } from '@/lib/types';
-
-// useSyncExternalStore needs a stable snapshot: a fresh [] on every read loops until React throws.
-const NO_ENTRIES: Entry[] = [];
 
 export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const book = useStore((s) => s.books.find((b) => b.id === id));
-  const entries = useStore((s) => s.entries[id ?? ''] ?? NO_ENTRIES);
+  const book = useStore(selectBook(id));
+  const entries = useStore(selectEntries(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
-  const [text, setText] = useState('');
-  const [recording, setRecording] = useState(false);
-  const [photoSheet, setPhotoSheet] = useState(false);
-  useScreen('book', { id, found: !!book, entries: entries.length });
+  const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
+  const text = state.context.text;
+  const recording = state.matches('recording');
+  const photoSheet = state.matches('choosingPhoto');
+  useScreen('book', { id, found: !!book });
 
   useFocusEffect(
     useCallback(() => {
       if (id) void pullEntries(id);
     }, [id]),
   );
-
-  const sendText = async () => {
-    const t = text.trim();
-    if (!t || !id) return;
-    setText('');
-    try {
-      await addTextEntry(id, t);
-    } catch (err) {
-      captureError('book.sendText', err, { bookId: id });
-    }
-  };
-
-  const takePhoto = async (source: 'camera' | 'library') => {
-    setPhotoSheet(false);
-    if (!id) return;
-    try {
-      const uri = await pickPhoto(source);
-      if (uri) await addPhotoEntry(id, uri);
-    } catch (err) {
-      captureError('book.takePhoto', err, { bookId: id, source });
-    }
-  };
 
   const header = useMemo(
     () =>
@@ -91,13 +67,13 @@ export default function BookPage() {
               {!!book.author && <Text style={styles.author}>{book.author}</Text>}
             </View>
           </View>
-          <StarRating value={book.rating} onChange={(n) => void rateBook(book.id, n)} size={52} />
+          <StarRating value={book.rating} onChange={(n) => send({ type: 'RATE', rating: n })} size={52} />
           <View style={styles.composer}>
             <TextInput
               id="entry-text"
               style={styles.input}
               value={text}
-              onChangeText={setText}
+              onChangeText={(t) => send({ type: 'SET_TEXT', text: t })}
               multiline
               autoCorrect={false}
               spellCheck={false}
@@ -108,18 +84,12 @@ export default function BookPage() {
               maxLength={4000}
             />
             {text.trim().length > 0 && (
-              <RoundButton icon="send" size={48} label="Spara" onPress={sendText} style={styles.sendBtn} />
+              <RoundButton icon="send" size={48} label="Spara" onPress={() => send({ type: 'SEND_TEXT' })} style={styles.sendBtn} />
             )}
           </View>
           <View style={styles.actions}>
-            <RoundButton icon="mic" size={88} label="Berätta" onPress={() => setRecording(true)} />
-            <RoundButton
-              icon="camera"
-              size={88}
-              color={colors.pink}
-              label="Fota"
-              onPress={() => setPhotoSheet(true)}
-            />
+            <RoundButton icon="mic" size={88} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
+            <RoundButton icon="camera" size={88} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
           </View>
         </View>
       ) : null,
@@ -161,18 +131,15 @@ export default function BookPage() {
       <RecorderOverlay
         bookId={id}
         visible={recording}
-        onDone={(uri, ms) => {
-          setRecording(false);
-          addAudioEntry(id, uri, ms).catch((err) => captureError('book.addAudio', err, { bookId: id, ms }));
-        }}
-        onUnavailable={() => setRecording(false)}
+        onDone={(uri, durationMs) => send({ type: 'RECORDING_DONE', uri, durationMs })}
+        onUnavailable={() => send({ type: 'RECORDING_UNAVAILABLE' })}
       />
 
       {photoSheet && (
-        <Pressable style={styles.sheetBackdrop} onPress={() => setPhotoSheet(false)} accessibilityLabel="Stäng">
+        <Pressable style={styles.sheetBackdrop} onPress={() => send({ type: 'CLOSE_PHOTOS' })} accessibilityLabel="Stäng">
           <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-            <RoundButton icon="camera" size={92} label="Kamera" onPress={() => void takePhoto('camera')} />
-            <RoundButton icon="photo" size={92} color={colors.pink} label="Bilder" onPress={() => void takePhoto('library')} />
+            <RoundButton icon="camera" size={92} label="Kamera" onPress={() => send({ type: 'PICK', source: 'camera' })} />
+            <RoundButton icon="photo" size={92} color={colors.pink} label="Bilder" onPress={() => send({ type: 'PICK', source: 'library' })} />
           </View>
         </Pressable>
       )}

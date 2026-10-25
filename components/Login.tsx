@@ -1,43 +1,38 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Icon } from './Icon';
 import { RainbowBar } from './Rainbow';
 import { RoundButton } from './RoundButton';
-import { FAMILY_EMAIL, isConfigured, serverPassword, supabase } from '@/lib/supabase';
-import { captureError, info } from '@/lib/telemetry';
+import { AppActor } from '@/lib/machines/app';
+import { isConfigured } from '@/lib/supabase';
 import { colors, fonts, radius } from '@/lib/theme';
 
 /** One field. A grown-up types the family password once per phone. */
 export function Login() {
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
+  const app = AppActor.useActorRef();
+  const busy = AppActor.useSelector((s) => s.matches('signingIn'));
+  const failures = AppActor.useSelector((s) => s.context.loginFailures);
+  const password = AppActor.useSelector((s) => s.context.password);
+  const canSubmit = AppActor.useSelector((s) => s.can({ type: 'SIGN_IN' }));
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
 
-  const submit = async () => {
-    if (!password || busy) return;
-    setBusy(true);
-    const t0 = Date.now();
-    const { error } = await supabase.auth
-      .signInWithPassword({ email: FAMILY_EMAIL, password: serverPassword(password) })
-      .catch((err) => ({ error: err as Error }));
-    setBusy(false);
-    if (error) captureError('login', error, { ms: Date.now() - t0 }, 'warn');
-    else info('login.ok', { ms: Date.now() - t0 });
-    if (error) {
-      shake.set(
-        withSequence(
-          withTiming(-10, { duration: 50 }),
-          withTiming(10, { duration: 50 }),
-          withTiming(-6, { duration: 50 }),
-          withTiming(0, { duration: 50 }),
-        ),
-      );
-      setPassword('');
-    }
-  };
+  useEffect(() => {
+    if (failures === 0) return;
+    shake.set(
+      withSequence(
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(-6, { duration: 50 }),
+        withTiming(0, { duration: 50 }),
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [failures]);
+
+  const submit = () => app.send({ type: 'SIGN_IN' });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -50,7 +45,7 @@ export function Login() {
             id="family-password"
             style={styles.input}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(p) => app.send({ type: 'SET_PASSWORD', password: p })}
             secureTextEntry
             keyboardType="number-pad"
             autoCapitalize="none"
@@ -58,9 +53,9 @@ export function Login() {
             textContentType="password"
             returnKeyType="go"
             onSubmitEditing={submit}
-            editable={isConfigured}
+            editable={isConfigured && !busy}
           />
-          <RoundButton icon="send" size={44} onPress={submit} disabled={!password || busy} label="Logga in" />
+          <RoundButton icon="send" size={44} onPress={submit} disabled={!canSubmit} label="Logga in" />
         </Animated.View>
         {!isConfigured && <Text style={styles.hint}>Appen saknar inställningar för databasen.</Text>}
       </View>

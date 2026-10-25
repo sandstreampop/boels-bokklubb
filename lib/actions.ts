@@ -2,7 +2,7 @@
 
 import { dirs, extensionOf, keepFile } from './files';
 import { uuid } from './ids';
-import { enqueue } from './outbox';
+import { enqueue } from './machines/outbox';
 import { patchBook, rememberLocalMedia, upsertBook, upsertEntry } from './store';
 import { traced } from './telemetry';
 import type { Book, Entry } from './types';
@@ -31,14 +31,14 @@ async function addBookInner(id: string, input: { title: string; author: string |
     pending: true,
   };
   upsertBook(book);
-  await enqueue({ id: uuid(), kind: 'book', book, coverLocalUri, attempts: 0 });
+  enqueue({ id: uuid(), kind: 'book', book, coverLocalUri, attempts: 0 });
   return book;
 }
 
 export function rateBook(bookId: string, rating: number): Promise<void> {
   return traced('action.rateBook', { bookId, rating }, async () => {
     patchBook(bookId, { rating });
-    await enqueue({ id: uuid(), kind: 'rating', bookId, rating, attempts: 0 });
+    enqueue({ id: uuid(), kind: 'rating', bookId, rating, attempts: 0 });
   });
 }
 
@@ -60,7 +60,7 @@ async function addTextEntryInner(bookId: string, text: string): Promise<void> {
     pending: true,
   };
   upsertEntry(entry);
-  await enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: null, attempts: 0 });
+  enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: null, attempts: 0 });
 }
 
 export function addPhotoEntry(bookId: string, photoUri: string): Promise<void> {
@@ -86,7 +86,7 @@ async function addPhotoEntryInner(bookId: string, photoUri: string): Promise<voi
     pending: true,
   };
   upsertEntry(entry);
-  await enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
+  enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }
 
 export function addAudioEntry(bookId: string, audioUri: string, durationMs: number, createdAt?: string): Promise<void> {
@@ -114,5 +114,5 @@ async function addAudioEntryInner(bookId: string, audioUri: string, durationMs: 
     pending: true,
   };
   upsertEntry(entry);
-  await enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
+  enqueue({ id: uuid(), kind: 'entry', entry, mediaLocalUri: local, attempts: 0 });
 }

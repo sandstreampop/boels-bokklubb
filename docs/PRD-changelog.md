@@ -109,14 +109,11 @@ stopped it, and none of which depend on anyone remembering:
    in `check.yml` on every push with `EXPO_NO_DOTENV=1` and `eas env:exec --environment
    production`, so a broken EAS environment fails CI before anyone ships.
 4. **The app refuses the bundle.** `lib/supabase.ts` drops the placeholder client. If the values
-   are missing at runtime and this is an over-the-air launch (`Updates.isEmbeddedLaunch` is
-   false), the app logs a fatal event to the local telemetry file and calls
-   `Updates.reloadAsync()` after marking the update as bad with `Updates.setUpdateURLAndRequestHeadersOverride`
-   is not needed: expo-updates already treats a JS exception during launch as a failed update and
-   rolls back to the embedded bundle on the next launch when `checkAutomatically` is `ON_ERROR_RECOVERY`
-   or when the launch crashes. So: throw at module load when unconfigured and not embedded. The
-   embedded bundle, which passed layer 1 at build time, takes over. The Login hint "Appen saknar
-   inställningar" goes away; it was only ever a symptom display.
+   are missing at runtime and the launch is an over-the-air bundle (`Updates.isEmbeddedLaunch` is
+   false), the module writes a fatal event to the local telemetry file and throws at load.
+   expo-updates treats a crash during launch of a new update as a failed update and starts the
+   embedded bundle next time, which passed layer 1 when it was built. The Login hint "Appen saknar
+   inställningar" goes away; it only ever displayed the symptom.
 
 Layer 1 is the one that makes the state impossible; 2 to 4 make the failure loud if 1 is ever
 bypassed. Implement 1 and 2 first, in the same session that does the pipeline.

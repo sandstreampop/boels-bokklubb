@@ -1,4 +1,5 @@
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { Icon } from './Icon';
 import { SparkBurst } from './SparkBurst';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
+import { startShare } from '@/lib/machines/share';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
 import { takeFresh } from '@/lib/store';
 import { debug } from '@/lib/telemetry';
@@ -29,18 +31,26 @@ export function EntryCard({ entry }: { entry: Entry }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh]);
 
+  // Share is a long-press, never a visible button. The share machine renders the card off screen.
+  const share = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    startShare({ kind: 'entry', entryId: entry.id, bookId: entry.book_id });
+  };
+
   return (
-    <Animated.View style={[styles.card, appear]}>
-      {entry.kind !== 'text' && !!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
-      {entry.kind === 'text' && <TextBody entry={entry} />}
-      {(entry.kind === 'photo' || entry.kind === 'drawing') && <PhotoBody entry={entry} />}
-      {entry.kind === 'audio' && <AudioBody entry={entry} autoplay={fresh} />}
-      <View style={styles.footer}>
-        <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
-        {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
-      </View>
-      {fresh && <SparkBurst burst={burst} radius={60} style={styles.corner} />}
-    </Animated.View>
+    <Pressable onLongPress={share} delayLongPress={450} accessibilityLabel="Håll för att dela">
+      <Animated.View style={[styles.card, appear]}>
+        {entry.kind !== 'text' && !!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
+        {entry.kind === 'text' && <TextBody entry={entry} />}
+        {(entry.kind === 'photo' || entry.kind === 'drawing') && <PhotoBody entry={entry} />}
+        {entry.kind === 'audio' && <AudioBody entry={entry} autoplay={fresh} />}
+        <View style={styles.footer}>
+          <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
+          {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
+        </View>
+        {fresh && <SparkBurst burst={burst} radius={60} style={styles.corner} />}
+      </Animated.View>
+    </Pressable>
   );
 }
 

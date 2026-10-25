@@ -11,6 +11,7 @@ import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold } from '@expo-goo
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Login } from '@/components/Login';
+import { ShareHost } from '@/components/ShareHost';
 import { AppActor } from '@/lib/machines/app';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
@@ -62,17 +63,20 @@ function Root() {
         <StatusBar style="dark" />
         <ErrorBoundary>
           {signedIn ? (
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.bg },
-                animation: 'slide_from_right',
-              }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="book/[id]" />
-              <Stack.Screen name="stats" />
-            </Stack>
+            <>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.bg },
+                  animation: 'slide_from_right',
+                }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="book/[id]" />
+                <Stack.Screen name="stats" />
+              </Stack>
+              <ShareHost />
+            </>
           ) : (
             <Login />
           )}

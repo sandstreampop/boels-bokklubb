@@ -14,6 +14,12 @@ first eight characters of what `npm run logs` shows in the `app` column.
   unicorn peeks up. Saving anything: the card springs in with sparkles, a chime, and the unicorn
   hops. A book going rainbow: a rainbow sweeps out from the cover, stars rain, a fanfare plays,
   the unicorn jumps and the ring draws itself around the cover. Once per book.
+- The unicorn has a voice (a chirp when she appears, a trill when she is happy, a yawn, a sneeze,
+  a "hm?") and follows her into every mode: she sways beside the timer while the mic is open, sits
+  under the text and below the canvas nodding now and then, and leaves while a card is shared.
+  Ten seconds without a touch and she yawns and leans toward the button that matters: plus on the
+  shelf, the mic on a book, done when writing or drawing. Enhörningens röst: rubberduck
+  (opengameart.org), CC0.
 
 ## Build 7 (2026-10-25, TestFlight)
 

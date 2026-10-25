@@ -10,6 +10,7 @@ import { assign, fromPromise, setup } from 'xstate';
 
 import { addBook } from '@/lib/actions';
 import { takePhoto } from '@/lib/images';
+import { setUnicornPose } from '@/lib/machines/unicorn';
 import { captureError } from '@/lib/telemetry';
 import type { Book } from '@/lib/types';
 
@@ -39,6 +40,7 @@ export const newBookMachine = setup({
   initial: 'editing',
   states: {
     editing: {
+      entry: () => setUnicornPose('home'),
       on: {
         SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
         SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
@@ -48,6 +50,7 @@ export const newBookMachine = setup({
       },
     },
     drawing: {
+      entry: () => setUnicornPose('drawing'),
       on: { DRAWING_DONE: { target: 'editing', actions: assign({ coverUri: ({ event, context }) => event.uri ?? context.coverUri }) } },
     },
     picking: {

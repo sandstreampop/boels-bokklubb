@@ -113,8 +113,9 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
   }, [state, current, onStage]);
 
   // Idle hint: a yawn, then a lean toward the useful button. Snaps back when the state changes.
+  // Not while recording: there she only sways, and the lean would stop the sway.
   useEffect(() => {
-    if (state !== 'idleHint' || !onStage) return;
+    if (state !== 'idleHint' || !onStage || pose === 'recording') return;
     scaleY.set(withSequence(withTiming(1.12, { duration: 500, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 300 })));
     const lean = leanFor(hint);
     x.set(withDelay(800, withSpring(lean.x, springs.swish)));

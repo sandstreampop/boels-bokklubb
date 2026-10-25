@@ -11,6 +11,7 @@
 import { assign, fromPromise, setup } from 'xstate';
 
 import { addTextEntry } from '@/lib/actions';
+import { unicornTouched } from '@/lib/machines/unicorn';
 import { captureError } from '@/lib/telemetry';
 
 type Input = { bookId: string };
@@ -37,7 +38,8 @@ export const writerMachine = setup({
     },
     writing: {
       on: {
-        SET_TEXT: { actions: assign({ text: ({ event }) => event.text }) },
+        // Typing counts as a touch: the unicorn does not yawn at her mid-sentence.
+        SET_TEXT: { actions: [assign({ text: ({ event }) => event.text }), () => unicornTouched()] },
         DONE: [{ guard: 'hasText', target: 'saving' }, { target: 'done' }],
       },
     },

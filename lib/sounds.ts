@@ -10,8 +10,8 @@
 // - Audio mode is global in expo-audio. Effects want playsInSilentMode: false (ring switch) and
 //   mixWithOthers (never pause her music). The recorder sets its own mode while the mic is open;
 //   `effectsAudioMode` is what it should restore afterwards instead of playsInSilentMode: true.
-// - A clip the repo does not have yet (the unicorn's voice, see docs/CREDITS.md) is `null` in the
-//   manifest: play() logs it once and stays silent. The app must be complete without it.
+// - A clip the repo does not have is `null` in the manifest: play() logs it once and stays silent.
+//   The app must be complete without it.
 
 import { createAudioPlayer, setAudioModeAsync, type AudioMode, type AudioPlayer, type AudioSource } from 'expo-audio';
 
@@ -27,6 +27,11 @@ import screen_in from '../assets/sounds/screen-in.m4a';
 import screen_out from '../assets/sounds/screen-out.m4a';
 import crayon from '../assets/sounds/crayon.m4a';
 import wand from '../assets/sounds/wand.m4a';
+import unicorn_chirp from '../assets/sounds/unicorn-chirp.m4a';
+import unicorn_trill from '../assets/sounds/unicorn-trill.m4a';
+import unicorn_yawn from '../assets/sounds/unicorn-yawn.m4a';
+import unicorn_sneeze from '../assets/sounds/unicorn-sneeze.m4a';
+import unicorn_hm from '../assets/sounds/unicorn-hm.m4a';
 import { captureError, debug, info } from './telemetry';
 
 export type SoundName =
@@ -62,13 +67,12 @@ const manifest: Record<SoundName, AudioSource | null> = {
   'screen-out': screen_out,
   crayon: crayon,
   wand: wand,
-  // The unicorn's voice is not sourced yet: Freesound is unreachable from the cloud session and
-  // Kenney's packs have no animal in them. Five CC0 clips under a second, one character.
-  'unicorn-chirp': null,
-  'unicorn-trill': null,
-  'unicorn-yawn': null,
-  'unicorn-sneeze': null,
-  'unicorn-hm': null,
+  // The unicorn's voice: one creature from rubberduck's CC0 pack on OpenGameArt, each under a second.
+  'unicorn-chirp': unicorn_chirp,
+  'unicorn-trill': unicorn_trill,
+  'unicorn-yawn': unicorn_yawn,
+  'unicorn-sneeze': unicorn_sneeze,
+  'unicorn-hm': unicorn_hm,
 };
 
 /** The app's resting audio mode: effects obey the ring switch and never interrupt other apps. */

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Builds assets/sounds/*.m4a from Kenney's CC0 audio packs, so every UI sound in the app has a
-// known source and licence (docs/CREDITS.md) and a swap is one line here, not a file hunt.
+// Builds assets/sounds/*.m4a from CC0 audio packs (Kenney for the UI, rubberduck's creature pack on
+// OpenGameArt for the unicorn's voice), so every sound in the app has a known source and licence
+// (docs/CREDITS.md) and a swap is one line here, not a file hunt.
 //
 //   node scripts/sounds.mjs           download the packs, convert the picks, print the credits rows
 //   node scripts/sounds.mjs --list    print the picks and do nothing
@@ -31,6 +32,13 @@ const PACKS = {
     page: 'https://kenney.nl/assets/music-jingles',
     zip: 'https://kenney.nl/media/pages/assets/music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip',
   },
+  // The unicorn's voice: one synthesised squeaky creature, ten "cute" variants plus a cough and a
+  // nose sound in the same voice. Freesound refuses the cloud session; this pack is CC0 on its page.
+  'creature-sfx': {
+    title: '80 CC0 creature SFX',
+    page: 'https://opengameart.org/content/80-cc0-creature-sfx',
+    zip: 'https://opengameart.org/sites/default/files/80-CC0-creature-SFX_0.zip',
+  },
 };
 
 // One row per sound the app plays (lib/sounds.ts). `pitch` is in semitones.
@@ -47,6 +55,11 @@ const PICKS = [
   { name: 'screen-out', pack: 'interface-sounds', file: 'Audio/minimize_006.ogg', use: 'screen leaves, a swish' },
   { name: 'crayon', pack: 'interface-sounds', file: 'Audio/scratch_003.ogg', use: 'crayon stroke starts, a tiny scratch' },
   { name: 'wand', pack: 'interface-sounds', file: 'Audio/glass_001.ogg', use: 'wand reroll, a twinkle' },
+  { name: 'unicorn-chirp', pack: 'creature-sfx', file: 'cute_02.ogg', use: 'the unicorn appears, a chirp' },
+  { name: 'unicorn-trill', pack: 'creature-sfx', file: 'cute_05.ogg', use: 'the unicorn is happy, a trill' },
+  { name: 'unicorn-yawn', pack: 'creature-sfx', file: 'cute_10.ogg', use: 'the unicorn yawns' },
+  { name: 'unicorn-sneeze', pack: 'creature-sfx', file: 'cough_02.ogg', use: 'the unicorn sneezes' },
+  { name: 'unicorn-hm', pack: 'creature-sfx', file: 'cute_08.ogg', use: 'the unicorn wonders, "hm?"' },
 ];
 
 const PEAK_DB = -3;
@@ -87,7 +100,7 @@ function main() {
   for (const [id, pack] of Object.entries(PACKS)) {
     const zip = join(tmp, `${id}.zip`);
     console.log(`downloading ${pack.title}`);
-    run('curl', ['-sSL', '--retry', '3', pack.zip, '-o', zip]);
+    run('curl', ['-sSL', '--retry', '3', '-A', 'Mozilla/5.0', pack.zip, '-o', zip]);
     mkdirSync(join(tmp, id));
     run('unzip', ['-oq', zip, '-d', join(tmp, id)]);
   }

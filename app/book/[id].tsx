@@ -44,7 +44,7 @@ export default function BookPage() {
   const writing = state.matches('writing');
   const drawing = state.matches('drawing');
   const drawingCover = state.matches('drawingCover');
-  useScreen('book', { id, found: !!book });
+  useScreen('book', { id, found: !!book }, 'mic');
 
   useFocusEffect(
     useCallback(() => {

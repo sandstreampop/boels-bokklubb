@@ -26,7 +26,7 @@ export default function Library() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const cardWidth = Math.floor((Math.min(width, 700) - GUTTER * 2 - GAP) / 2);
-  useScreen('library', { books: books.length });
+  useScreen('library', { books: books.length }, 'plus');
   // Set piece 1: the shelf cascades in book by book at launch. A book mounted later (added, or
   // scrolled into view) springs in on its own, without the stagger.
   const [launching, setLaunching] = useState(true);

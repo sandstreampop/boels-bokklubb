@@ -16,8 +16,10 @@ machine replaces it, update this row and `components/Unicorn.tsx` only.
 
 ## Sounds
 
-Built by `node scripts/sounds.mjs` from Kenney's CC0 packs (mono AAC, 44.1 kHz, peak at -3 dBFS).
-Kenney asks for no credit; the credit line is still "Ljud: Kenney (kenney.nl), CC0."
+Built by `node scripts/sounds.mjs` from CC0 packs (mono AAC, 44.1 kHz, peak at -3 dBFS): Kenney's
+for the interface, rubberduck's creature pack on OpenGameArt for the unicorn's voice. Kenney asks
+for no credit; the credit line is still "Ljud: Kenney (kenney.nl), CC0. Enhörningens röst:
+rubberduck (opengameart.org), CC0."
 
 | File | Used for | Source | Licence |
 | --- | --- | --- | --- |
@@ -33,19 +35,27 @@ Kenney asks for no credit; the credit line is still "Ljud: Kenney (kenney.nl), C
 | `assets/sounds/screen-out.m4a` | screen leaves, a swish | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `Audio/minimize_006.ogg` | CC0 |
 | `assets/sounds/crayon.m4a` | crayon stroke starts, a tiny scratch | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `Audio/scratch_003.ogg` | CC0 |
 | `assets/sounds/wand.m4a` | wand reroll, a twinkle | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `Audio/glass_001.ogg` | CC0 |
+| `assets/sounds/unicorn-chirp.m4a` | the unicorn appears, a chirp | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_02.ogg` | CC0 |
+| `assets/sounds/unicorn-trill.m4a` | the unicorn is happy, a trill | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_05.ogg` | CC0 |
+| `assets/sounds/unicorn-yawn.m4a` | the unicorn yawns | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_10.ogg` | CC0 |
+| `assets/sounds/unicorn-sneeze.m4a` | the unicorn sneezes | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cough_02.ogg` | CC0 |
+| `assets/sounds/unicorn-hm.m4a` | the unicorn wonders, "hm?" | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_08.ogg` | CC0 |
 
 The picks were made by Kenney's own file names and measured length, not by ear: the session that
 made them had no speaker. If one sounds wrong on the phone, change its line in
 `scripts/sounds.mjs`, rerun, and update the row.
 
-## Not sourced yet
+## The unicorn's voice
 
-The unicorn's voice: five clips under a second each, one character, no words: appear chirp, happy
-trill, yawn, sneeze, "hm?". Named in `lib/sounds.ts` as `unicorn-chirp`, `unicorn-trill`,
-`unicorn-yawn`, `unicorn-sneeze`, `unicorn-hm`, all `null` until a file exists, so the app is
-silent there and complete. Source to try: Freesound filtered to CC0 (unreachable from the cloud
-session), then Kenney's packs (none have an animal in them). To add one: convert to m4a like the
-script does, drop it in `assets/sounds/`, import it in the manifest, add a row above.
+Five clips under a second each, one character, no words. Freesound answers 403 to the cloud
+session (the block is Freesound's, not the proxy's) and Kenney has no animal, so the search went to
+OpenGameArt filtered to CC0. The pick is rubberduck's "80 CC0 creature SFX" (2018): its ten
+`cute_*` files are one synthesised squeaky creature (fundamental about 430 to 650 Hz), and its
+cough and nose sounds are unpitched, so the sneeze fits any voice. Chosen by name and by measured
+pitch envelope, not by ear, like the Kenney picks: if one sounds wrong, the alternatives in the
+same voice are `cute_07` (a flat blip) for the chirp, `cute_09` (a smooth "weee") for the trill,
+`ooh.ogg` for the yawn and `nose.ogg` for the sneeze. The `null` manifest path still works for any
+clip removed.
 
 ## How the sound sources were evaluated (PRD build 7 §3, in that order)
 

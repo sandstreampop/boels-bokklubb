@@ -15,6 +15,7 @@
 // never repeat the one before; HIDE wins over everything; hidden and ducked drop the queue (she is
 // elsewhere). No sleep gesture. Nothing here reads usage; the breadcrumbs are for bugs.
 
+import { AppState } from 'react-native';
 import { assign, createActor, setup } from 'xstate';
 
 import { inspect } from './inspect';
@@ -46,6 +47,8 @@ export const CUES: Record<TrickName | MomentName, { ms: number; sound: SoundName
 export const IDLE_MS = 10_000;
 export const IDLE_REPEAT_MS = 20_000;
 export const HINT_MS = 1_800;
+/** Into the hint: the yawn first, then the look and lean toward the button with a "hm?". */
+export const HINT_LEAN_MS = 800;
 /** Taps while a cue plays queue up to this many tricks; a mash is not a to-do list. */
 const MAX_QUEUED_TRICKS = 2;
 
@@ -77,6 +80,7 @@ export const unicornMachine = setup({
     IDLE: IDLE_MS,
     REPEAT: IDLE_REPEAT_MS,
     HINT: HINT_MS,
+    LEAN: HINT_LEAN_MS,
     CUE: ({ context }) => (context.current ? CUES[context.current.name].ms : 0),
   },
   guards: {
@@ -107,8 +111,12 @@ export const unicornMachine = setup({
     },
     clearStage: assign({ queue: [], current: null }),
     hintSound: ({ context }) => {
-      play('unicorn-yawn');
+      // Silent while she records: the yawn would be the loudest thing in her voice note.
+      if (context.pose !== 'recording') play('unicorn-yawn');
       info('unicorn.hint', { target: context.hint, pose: context.pose });
+    },
+    leanSound: ({ context }) => {
+      if (context.pose !== 'recording' && context.hint) play('unicorn-hm');
     },
     setPose: assign(({ event }) => (event.type === 'SET_POSE' ? { pose: event.pose } : {})),
     setHint: assign(({ event }) => (event.type === 'SET_HINT' ? { hint: event.target } : {})),
@@ -136,7 +144,7 @@ export const unicornMachine = setup({
     },
     idleHint: {
       entry: 'hintSound',
-      after: { HINT: 'idleWait' },
+      after: { LEAN: { actions: 'leanSound' }, HINT: 'idleWait' },
       on: {
         TAP: { target: 'playing', actions: 'queueTrick' },
         MOMENT: { target: 'playing', actions: 'queueMoment' },
@@ -186,6 +194,11 @@ export function startUnicorn() {
   if (started) return;
   started = true;
   unicorn.start();
+  // The idle timers run on in the background; coming back counts as a touch, so she does not
+  // yawn at the first glance.
+  AppState.addEventListener('change', (s) => {
+    if (s === 'active') unicorn.send({ type: 'SET_TOUCHED' });
+  });
 }
 
 function send(event: Events) {

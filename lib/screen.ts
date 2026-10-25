@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 
+import { setUnicornHint, type HintTarget } from './machines/unicorn';
 import { play } from './sounds';
 import { info } from './telemetry';
 
@@ -17,8 +18,11 @@ function swish(name: 'screen-in' | 'screen-out') {
   play(name);
 }
 
-/** One breadcrumb per screen focus, so every error report shows where Boel was. And the swish. */
-export function useScreen(name: string, params?: Record<string, unknown>) {
+/**
+ * One breadcrumb per screen focus, so every error report shows where Boel was. And the swish, and
+ * the button the unicorn's idle hint leans toward on this screen.
+ */
+export function useScreen(name: string, params?: Record<string, unknown>, hint: HintTarget = null) {
   const key = JSON.stringify(params ?? null);
   const arrived = useRef(false);
   const alive = useRef(true);
@@ -31,6 +35,7 @@ export function useScreen(name: string, params?: Record<string, unknown>) {
   useFocusEffect(
     useCallback(() => {
       info('screen.focus', { screen: name, ...(params ?? {}) });
+      setUnicornHint(hint);
       if (!arrived.current) {
         arrived.current = true;
         if (anyScreenFocused) swish('screen-in');
@@ -43,6 +48,6 @@ export function useScreen(name: string, params?: Record<string, unknown>) {
         }, 0);
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [name, key]),
+    }, [name, key, hint]),
   );
 }

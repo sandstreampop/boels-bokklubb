@@ -17,6 +17,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { eas } from './eas.mjs';
+
 const need = ['EXPO_TOKEN', 'ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8_BASE64', 'APPLE_TEAM_ID', 'ASC_APP_ID'].filter((n) => !process.env[n]);
 if (need.length) {
   console.error(`Missing environment secrets: ${need.join(', ')}`);
@@ -26,8 +28,8 @@ if (need.length) {
 const keyPath = join(mkdtempSync(join(tmpdir(), 'asc-')), 'AuthKey.p8');
 writeFileSync(keyPath, Buffer.from(process.env.ASC_KEY_P8_BASE64.trim(), 'base64'));
 
+// Handed to eas-cli on top of process.env and the committed .env (see scripts/eas.mjs).
 const env = {
-  ...process.env,
   EXPO_ASC_API_KEY_PATH: keyPath,
   EXPO_ASC_KEY_ID: process.env.ASC_KEY_ID,
   EXPO_ASC_ISSUER_ID: process.env.ASC_ISSUER_ID,
@@ -41,7 +43,7 @@ const lastCommit = () => {
   const r = spawnSync('git', ['log', '-1', '--pretty=%s'], { encoding: 'utf8' });
   return r.status === 0 ? r.stdout.trim() : 'update';
 };
-const eas =
+const easArgs =
   mode === 'submit'
     ? ['submit', '--platform', 'ios', '--profile', 'production', '--latest', '--non-interactive', ...rest]
     : mode === 'update'
@@ -59,5 +61,4 @@ const eas =
         ]
       : ['build', '--platform', 'ios', '--profile', 'production', '--auto-submit', '--non-interactive', ...rest];
 
-const r = spawnSync('npx', ['eas-cli@latest', ...eas], { stdio: 'inherit', env });
-process.exit(r.status ?? 1);
+process.exit(eas(easArgs, env));

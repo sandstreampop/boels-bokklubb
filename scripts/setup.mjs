@@ -12,6 +12,8 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { easEnv as withDotenv } from './eas.mjs';
+
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const FAMILY_EMAIL = 'familjen@boelsbokklubb.app';
 const REPO = 'sandstreampop/boels-bokklubb';
@@ -177,7 +179,7 @@ function env() {
       const create = spawnSync(
         'npx',
         ['eas-cli@latest', 'env:create', '--environment', environment, '--scope', 'project', '--visibility', 'plaintext', '--name', name, '--value', value, '--non-interactive'],
-        { cwd: ROOT, encoding: 'utf8', env: process.env },
+        { cwd: ROOT, encoding: 'utf8', env: withDotenv() },
       );
       if (create.status === 0) {
         ok(`${environment} ${name} created`);
@@ -187,7 +189,7 @@ function env() {
       const update = spawnSync(
         'npx',
         ['eas-cli@latest', 'env:update', '--variable-name', name, '--variable-environment', environment, '--value', value, '--non-interactive'],
-        { cwd: ROOT, encoding: 'utf8', env: process.env },
+        { cwd: ROOT, encoding: 'utf8', env: withDotenv() },
       );
       if (update.status !== 0) throw new Error(`eas env:update ${environment} ${name} failed: ${(update.stderr || update.stdout).slice(-400)}`);
       ok(`${environment} ${name} updated`);
@@ -222,7 +224,7 @@ function ascKeyPath() {
 function easEnv() {
   need('EXPO_TOKEN', 'APPLE_TEAM_ID', 'ASC_ISSUER_ID', 'ASC_KEY_ID', 'ASC_APP_ID');
   return {
-    ...process.env,
+    ...withDotenv(),
     EXPO_ASC_API_KEY_PATH: ascKeyPath(),
     EXPO_ASC_KEY_ID: process.env.ASC_KEY_ID,
     EXPO_ASC_ISSUER_ID: process.env.ASC_ISSUER_ID,

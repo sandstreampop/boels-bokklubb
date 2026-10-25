@@ -95,6 +95,7 @@ TestFlight build without any JS error.
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
     npm run update      # JS-only change over the air to installed builds, about a minute
     npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit, about 25 minutes, native changes only
+    npm run eas -- …    # any other eas-cli command, with .env loaded (eas-cli evaluates app.config.ts without it)
 
 Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own.
 

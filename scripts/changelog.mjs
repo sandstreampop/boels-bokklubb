@@ -107,6 +107,13 @@ export function release(what, date = today()) {
   return { title, body };
 }
 
+/** The newest build section: its version, build number and lines. For finishing a ship after the build was queued. */
+export function latestBuild(text = read()) {
+  const m = /^## (\d+\.\d+\.\d+) \(build (\d+), [^)]*\)\n([\s\S]*?)(?=^#{2,3} |\s*$(?![\s\S]))/m.exec(text);
+  if (!m) throw new Error('docs/CHANGELOG.md has no "## x.y.z (build N, …)" section');
+  return { version: m[1], build: Number(m[2]), body: m[3].trim() };
+}
+
 export function today() {
   return new Date().toISOString().slice(0, 10);
 }

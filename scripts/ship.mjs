@@ -12,6 +12,11 @@
 //   node scripts/ship.mjs prove             only the bundle proof (check.yml runs this on every push)
 //   node scripts/ship.mjs submit            resubmit the latest finished build
 //   node scripts/ship.mjs web               the web version alone: deploy the feed function, build the page, changelog
+//   node scripts/ship.mjs finish <build-id> a build that was queued but not waited for: wait, then write "What to Test"
+//
+// A Ship run that failed after "build … queued" must not be rerun from the Actions tab: the build
+// exists and its changelog commit is on main. `auto` refuses when origin/main already carries a
+// newer ship commit than the checkout; `finish` does the rest for that build.
 //
 // Every ship mode refuses to run when `## Unreleased` in docs/CHANGELOG.md is empty: writing the
 // line is part of shipping. On success the Unreleased lines move into a dated section and that
@@ -33,7 +38,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { setWhatsNew, waitForProcessedBuild } from './asc.mjs';
-import { ROOT, asPlainText, changesSince, hasWhatToTest, release, unreleased } from './changelog.mjs';
+import { ROOT, asPlainText, changesSince, hasWhatToTest, latestBuild, release, unreleased } from './changelog.mjs';
 import { dotenv, eas, easEnv } from './eas.mjs';
 import { deployFunction, migrate } from './supabase.mjs';
 
@@ -74,9 +79,9 @@ function appleEnv() {
 
 // ---- helpers -------------------------------------------------------------------------------------
 
-/** eas-cli with --json: the JSON from stdout, everything else shown to the terminal. */
-function easJson(cliArgs, extra = {}) {
-  const r = spawnSync('npx', ['eas-cli@latest', ...cliArgs, '--json', '--non-interactive'], {
+/** eas-cli with --json: the JSON from stdout, everything else shown to the terminal. `build:view` has no --non-interactive. */
+function easJson(cliArgs, extra = {}, flags = ['--json', '--non-interactive']) {
+  const r = spawnSync('npx', ['eas-cli@latest', ...cliArgs, ...flags], {
     cwd: ROOT,
     encoding: 'utf8',
     env: easEnv(extra),
@@ -282,7 +287,7 @@ async function waitForBuild(id, apple) {
   const deadline = Date.now() + 60 * 60_000;
   let last = null;
   while (Date.now() < deadline) {
-    const b = easJson(['build:view', id], apple);
+    const b = easJson(['build:view', id], apple, ['--json']);
     if (b.status !== last) console.log(`  EAS build ${id.slice(0, 8)}: ${b.status}`);
     last = b.status;
     if (b.status === 'FINISHED') return b;
@@ -324,12 +329,35 @@ async function web() {
   push();
 }
 
+/** The part of a native ship after "build queued": wait for EAS, wait for Apple, write "What to Test" from the changelog. */
+async function finish(id) {
+  if (!id) fail('usage: node scripts/ship.mjs finish <eas build id>');
+  const apple = appleEnv();
+  log(`EAS: waiting for build ${id.slice(0, 8)} (20 to 30 minutes)`);
+  const b = await waitForBuild(id, apple);
+  const section = latestBuild();
+  if (String(b.appBuildVersion) !== String(section.build) || b.appVersion !== section.version) {
+    fail(`EAS build ${id.slice(0, 8)} is ${b.appVersion} (${b.appBuildVersion}); the changelog's latest build section is ${section.version} (build ${section.build})`);
+  }
+  log('App Store Connect: waiting for Apple to process it');
+  const processed = await waitForProcessedBuild({ buildNumber: section.build, appVersion: section.version });
+  const whatsNew = asPlainText(section.body);
+  const r = await setWhatsNew(processed.id, whatsNew);
+  ok(`"What to Test" ${r.created ? 'written' : 'updated'} for ${section.version} (${section.build}): ${whatsNew.split('\n')[0]}`);
+}
+
 /** CI entry: update, build, web, or nothing, from the diff since the last ship. */
 async function auto() {
   const c = changesSince();
   if (c.headIsShip) {
     console.log(`HEAD is the ship commit "${c.subject}"; nothing to ship.`);
     return;
+  }
+  // A rerun of a failed run checks out the same commit; if the ship got as far as its changelog
+  // commit, main already carries it and shipping again would queue a second build.
+  const newerShip = spawnSync('git', ['log', '--format=%s', '--grep=^Changelog: ', 'HEAD..origin/main'], { cwd: ROOT, encoding: 'utf8' }).stdout.trim();
+  if (newerShip) {
+    fail(`main already carries "${newerShip.split('\n')[0]}" after this commit: it was shipped. If that run failed while waiting for the build, node scripts/ship.mjs finish <build-id> does the rest; nothing to ship from here.`);
   }
   const body = unreleased();
   if (!body) {
@@ -368,5 +396,6 @@ function submit() {
   else if (mode === 'prove') proveBundle();
   else if (mode === 'submit') submit();
   else if (mode === 'web') await web();
+  else if (mode === 'finish') await finish(args[1]);
   else fail(`unknown mode ${mode}; see the header of scripts/ship.mjs`);
 })().catch((err) => fail(err.message));

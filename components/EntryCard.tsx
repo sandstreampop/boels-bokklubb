@@ -31,14 +31,14 @@ export function EntryCard({ entry }: { entry: Entry }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh]);
 
-  // Share is a long-press, never a visible button. The share machine renders the card off screen.
+  // The share button previews the card before the iOS share sheet opens (see lib/machines/share.ts).
   const share = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     startShare({ kind: 'entry', entryId: entry.id, bookId: entry.book_id });
   };
 
   return (
-    <Pressable onLongPress={share} delayLongPress={450} accessibilityLabel="Håll för att dela">
+    <View>
       <Animated.View style={[styles.card, appear]}>
         {entry.kind !== 'text' && !!entry.prompt && <Text style={styles.prompt}>{entry.prompt}</Text>}
         {entry.kind === 'text' && <TextBody entry={entry} />}
@@ -46,11 +46,16 @@ export function EntryCard({ entry }: { entry: Entry }) {
         {entry.kind === 'audio' && <AudioBody entry={entry} autoplay={fresh} />}
         <View style={styles.footer}>
           <Text style={styles.date}>{formatDate(entry.created_at)}</Text>
-          {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
+          <View style={styles.footerRight}>
+            {entry.pending && <View style={styles.dot} accessibilityLabel="Sparas" />}
+            <Pressable onPress={share} hitSlop={12} accessibilityRole="button" accessibilityLabel="Dela" style={styles.shareBtn}>
+              <Icon name="share" size={22} color={colors.pinkDeep} />
+            </Pressable>
+          </View>
         </View>
         {fresh && <SparkBurst burst={burst} radius={60} style={styles.corner} />}
       </Animated.View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -190,6 +195,8 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   date: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.muted },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.pink },
+  footerRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  shareBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   corner: { left: undefined, bottom: undefined, right: -8, top: -8, width: 16, height: 16 },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.pinkSoft },
   drawing: { aspectRatio: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },

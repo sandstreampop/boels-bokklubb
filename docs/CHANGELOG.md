@@ -4,6 +4,13 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
+## Unreleased
+
+- Every entry and the totals page have a share button; it shows the card first, with Share and
+  Cancel, before anything is sent.
+- Sixteen crayons: red, orange, yellow, green, two blues, purple, pink, the five pastels, brown,
+  grey and black.
+
 ## Build 6 (2026-10-25, TestFlight)
 
 What to test: tap the crayon on a book, draw, tap done; the drawing lands in the stream. Add a

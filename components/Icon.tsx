@@ -21,7 +21,8 @@ export type IconName =
   | 'wand'
   | 'book'
   | 'crayon'
-  | 'undo';
+  | 'undo'
+  | 'share';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -115,6 +116,13 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
         <>
           <Path d="M9 7H4v5" {...common} />
           <Path d="M4.5 12a8 8 0 1 1 2.3 5.7" {...common} />
+        </>
+      )}
+      {name === 'share' && (
+        <>
+          <Path d="M12 15V4" {...common} />
+          <Polyline points="7.5,8.5 12,4 16.5,8.5" {...common} />
+          <Path d="M5 12v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-7" {...common} />
         </>
       )}
       {name === 'lock' && (

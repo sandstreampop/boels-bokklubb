@@ -25,7 +25,8 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 - Minimal text in the UI, icons over labels, no explaining prose. Swedish where words are needed.
 - Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts. The magic
   wand rerolls a prompt anywhere one is shown.
-- Share is a long-press, never a visible button.
+- Share is a visible share button on every entry card and on the stats. It never sends at once: a
+  sheet previews the card with Share and Cancel first.
 - Photos are taken with the camera, never chosen from the gallery.
 - A book with stars, a recording and a picture is complete and wears the rainbow ring. Derived,
   never stored.

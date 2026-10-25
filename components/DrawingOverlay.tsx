@@ -41,7 +41,7 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
   const [state, send] = useMachine(drawingMachine, { input: { capture }, inspect });
   const { strokes, color } = state.context;
   const drawing = state.matches('drawing');
-  const side = Math.floor(Math.min(width - 32, height * 0.56));
+  const side = Math.floor(Math.min(width - 32, height * 0.5));
 
   // The stroke under her finger, kept out of the machine until it is finished (one event per stroke).
   const live = useRef('');
@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   top: { width: '100%', minHeight: 56, justifyContent: 'center' },
   canvas: { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 2, borderColor: colors.line, overflow: 'hidden' },
-  crayons: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', height: 56 },
-  crayon: { width: 36, height: 36, borderRadius: 18 },
-  crayonOn: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: colors.white, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+  crayons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 10, rowGap: 8, maxWidth: 400 },
+  crayon: { width: 34, height: 34, borderRadius: 17, margin: 4 },
+  crayonOn: { margin: 0, width: 42, height: 42, borderRadius: 21, borderWidth: 3, borderColor: colors.white, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
   bar: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

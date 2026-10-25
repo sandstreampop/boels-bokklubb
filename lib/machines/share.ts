@@ -1,10 +1,10 @@
-// Sharing a card as an image. One module-level actor: a long-press anywhere asks for a card, the
-// hidden ShareCard renders it, view-shot captures it, the iOS share sheet opens, the file is
-// removed when the sheet closes.
+// Sharing a card as an image. One module-level actor: a share button asks for a card, the hidden
+// ShareCard renders it, view-shot captures it, a preview sheet shows the picture with Share and
+// Cancel, the iOS share sheet opens on Share, and the file is removed when it all closes.
 //
-//   idle ──SHARE(target)──▶ rendering ──READY(capture)──▶ capturing ──▶ sharing ──▶ idle
-//                              │ 5 s without READY (a missing image, say)        │ error
-//                              └──────────────────────────▶ idle ◀───────────────┘
+//   idle ──SHARE(target)──▶ rendering ──READY(capture)──▶ capturing ──▶ previewing ──CONFIRM──▶ sharing ──▶ idle
+//                              │ 5 s without READY (a missing image, say)  │ error      │ CANCEL              │ error
+//                              └──────────────────────────▶ idle ◀─────────┴────────────┴─────────────────────┘
 //
 // iOS reports the sheet closing but not whether she sent or cancelled, so the breadcrumb is
 // `share.closed` for both.
@@ -19,7 +19,11 @@ import { captureError, info, traced, warn } from '@/lib/telemetry';
 export type ShareTarget = { kind: 'entry'; entryId: string; bookId: string } | { kind: 'stats' };
 
 type Context = { target: ShareTarget | null; capture: (() => Promise<string>) | null; uri: string | null };
-type Events = { type: 'SHARE'; target: ShareTarget } | { type: 'READY'; capture: () => Promise<string> };
+type Events =
+  | { type: 'SHARE'; target: ShareTarget }
+  | { type: 'READY'; capture: () => Promise<string> }
+  | { type: 'CONFIRM' }
+  | { type: 'CANCEL' };
 
 export const shareMachine = setup({
   types: { context: {} as Context, events: {} as Events },
@@ -28,13 +32,9 @@ export const shareMachine = setup({
       traced('share.capture', { kind: input.kind }, input.capture),
     ),
     share: fromPromise(async ({ input }: { input: { uri: string; kind: string } }) => {
-      try {
-        if (!(await Sharing.isAvailableAsync())) throw new Error('sharing unavailable');
-        await Sharing.shareAsync(input.uri, { mimeType: 'image/png', UTI: 'public.png' });
-        info('share.closed', { kind: input.kind });
-      } finally {
-        deleteFile(input.uri);
-      }
+      if (!(await Sharing.isAvailableAsync())) throw new Error('sharing unavailable');
+      await Sharing.shareAsync(input.uri, { mimeType: 'image/png', UTI: 'public.png' });
+      info('share.closed', { kind: input.kind });
     }),
   },
 }).createMachine({
@@ -43,7 +43,7 @@ export const shareMachine = setup({
   initial: 'idle',
   states: {
     idle: {
-      entry: assign({ target: null, capture: null, uri: null }),
+      entry: [({ context }) => context.uri && deleteFile(context.uri), assign({ target: null, capture: null, uri: null })],
       on: { SHARE: { target: 'rendering', actions: assign({ target: ({ event }) => event.target }) } },
     },
     rendering: {
@@ -55,8 +55,15 @@ export const shareMachine = setup({
       invoke: {
         src: 'capture',
         input: ({ context }) => ({ capture: context.capture!, kind: context.target?.kind ?? '' }),
-        onDone: { target: 'sharing', actions: assign({ uri: ({ event }) => event.output }) },
+        onDone: { target: 'previewing', actions: assign({ uri: ({ event }) => event.output }) },
         onError: { target: 'idle', actions: ({ event, context }) => captureError('share.capture', event.error, { kind: context.target?.kind }) },
+      },
+    },
+    previewing: {
+      entry: ({ context }) => info('share.preview', { kind: context.target?.kind }),
+      on: {
+        CONFIRM: 'sharing',
+        CANCEL: { target: 'idle', actions: ({ context }) => info('share.cancel', { kind: context.target?.kind }) },
       },
     },
     sharing: {
@@ -73,7 +80,7 @@ export const shareMachine = setup({
 export const shareActor = createActor(shareMachine, { inspect });
 let started = false;
 
-/** A long-press somewhere asked for a card. Ignored while one is already on its way. */
+/** A share button asked for a card. Ignored while one is already on its way. */
 export function startShare(target: ShareTarget) {
   if (!started) {
     started = true;

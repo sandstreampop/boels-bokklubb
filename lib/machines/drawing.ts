@@ -24,7 +24,25 @@ type Events =
   | { type: 'DONE' }
   | { type: 'RESET' };
 
-export const CRAYONS = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#2B2B2B'] as const;
+/** Two rows of crayons: the classic rainbow and friends on top, the app's pastels and black below. */
+export const CRAYONS = [
+  '#FF3B30', // red
+  '#FF9500', // orange
+  '#FFD60A', // yellow
+  '#34C759', // green
+  '#5AC8FA', // light blue
+  '#007AFF', // blue
+  '#AF52DE', // purple
+  '#FF2D55', // pink
+  '#FF9AA2', // pastel rose
+  '#FFDAC1', // pastel peach
+  '#E2F0CB', // pastel lime
+  '#B5EAD7', // pastel mint
+  '#C7CEEA', // pastel lavender
+  '#8B5A2B', // brown
+  '#9A9A9A', // grey
+  '#2B2B2B', // black
+] as const;
 
 export const drawingMachine = setup({
   types: { context: {} as Context, events: {} as Events, input: {} as Input },
@@ -38,7 +56,7 @@ export const drawingMachine = setup({
   },
 }).createMachine({
   id: 'drawing',
-  context: ({ input }) => ({ ...input, prompt: null, color: CRAYONS[6], strokes: [], uri: null }),
+  context: ({ input }) => ({ ...input, prompt: null, color: CRAYONS[CRAYONS.length - 1], strokes: [], uri: null }),
   initial: 'idle',
   states: {
     idle: {

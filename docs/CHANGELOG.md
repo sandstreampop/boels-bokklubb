@@ -6,6 +6,9 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- Her recordings play on the web: tap the round button to hear her, tap again to pause, and
+  starting one stops another.
+
 ## 1.1.0 (build 8, 2026-10-25, TestFlight)
 
 What to test: inget nytt i appen; öppna webblänken på telefonen.

@@ -142,6 +142,29 @@ async function build() {
 /** A 1×1 pink PNG for every image the fixture points at. */
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5/hPwAIAgL/4aW5GwAAAABJRU5ErkJggg==', 'base64');
 
+/** A short silent WAV for every recording the fixture points at: Chromium plays it to the end in `seconds`. */
+function wav(seconds) {
+  const rate = 8000;
+  const samples = Math.round(rate * seconds);
+  const data = Buffer.alloc(samples * 2);
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+const WAV = wav(1.2);
+
 async function check() {
   const feedUrl = await build();
   const fixture = loadFixture();
@@ -177,6 +200,7 @@ async function check() {
         return route.fulfill({ status: a.status, contentType: 'application/json', body: a.data === null ? '' : JSON.stringify(a.data) });
       }
       if (/\.(png|jpe?g)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+      if (/\.(m4a|mp4|wav)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'audio/wav', body: WAV });
       if (/fonts\.googleapis\.com/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
       return route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' });
     });
@@ -294,6 +318,32 @@ async function check() {
       expect((await count(page, '.share, .shareBtn')) === 0, 'no share button');
       await page.click('.back');
       await page.waitForSelector('.library .grid .book');
+    },
+  });
+
+  await open({
+    name: 'her voice plays: tap plays, tap pauses, one at a time, a finished one rests',
+    ...phone,
+    hash: `#/book/${fb.book.id}`,
+    storage: { 'bokklubb.pass': stored.pass ?? '', 'bokklubb.pass.expires': String(Date.now() + 86400e3), 'bokklubb.token': fixture.token },
+    steps: async (page, { expect }) => {
+      await page.waitForSelector('.book-page .entry.audio .player');
+      const players = page.locator('.entry.audio .player');
+      expect((await players.locator('.play:not([disabled])').count()) === kinds('audio').length, 'every recording has a live play button');
+      await players.nth(0).locator('.play').click();
+      await page.waitForSelector('.entry.audio .player.playing');
+      expect((await page.locator('.player.playing').count()) === 1, 'the first one is playing');
+      expect((await players.nth(0).getAttribute('class')).includes('playing'), 'and it is the one tapped');
+      await players.nth(1).locator('.play').click();
+      await page.waitForFunction(() => document.querySelectorAll('.player.playing').length === 1 && document.querySelectorAll('.player')[1].classList.contains('playing'));
+      expect(!(await players.nth(0).getAttribute('class')).includes('playing'), 'starting the second stopped the first');
+      await players.nth(1).locator('.play').click();
+      await page.waitForFunction(() => document.querySelectorAll('.player.playing').length === 0);
+      expect(true, 'a tap pauses');
+      await players.nth(1).locator('.play').click();
+      await page.waitForFunction(() => document.querySelectorAll('.player.playing').length === 0, null, { timeout: 10_000 });
+      await page.waitForFunction(() => document.querySelectorAll('.player')[1].querySelector('.time')?.textContent === '0:08');
+      expect(true, 'a finished recording shows its duration again');
     },
   });
 

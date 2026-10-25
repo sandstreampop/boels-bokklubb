@@ -4,13 +4,14 @@
 // prompt in muted type (a fill-in prompt wraps her words), her words verbatim, photos and drawings
 // as in the app, the date. Audio entries show the round play button with the duration and the
 // transcript under it; a pending transcript shows the two grey bars, a failed one nothing.
-// Back goes to the library. The empty cover is not tappable.
+// Playback is player.ts. Back goes to the library. The empty cover is not tappable.
 
 import { isFillIn, splitFillIn } from '../lib/fillIn';
 import { formatDate, formatDuration } from '../lib/format';
 import { fetchBook, type Entry } from './api';
 import { icon } from './icons';
 import { coverHtml, escape } from './library';
+import { mountPlayers } from './player';
 import { crumb } from './telemetry';
 
 const STAR = 'M12 2.5l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.3l-6 3.3 1.3-6.6L2.4 9.4l6.7-.8L12 2.5z';
@@ -37,10 +38,11 @@ function pictureHtml(e: Entry): string {
   return `<div class="picture${e.kind === 'drawing' ? ' drawing' : ''}">${img}</div>`;
 }
 
-/** The player's resting look: the button, the bars, the duration. Playing comes with the next ship. */
+/** The player at rest: the button, the bars, the duration. player.ts makes it play once the page is shown. */
 export function playerHtml(e: Entry): string {
   const bars = BAR_HEIGHTS.map((h) => `<span class="bar" style="height:${h}px"></span>`).join('');
-  return `<div class="player" data-id="${escape(e.id)}">
+  const src = e.media_url ? ` data-src="${escape(e.media_url)}"` : '';
+  return `<div class="player" data-id="${escape(e.id)}"${src} data-duration="${e.duration_ms ?? 0}">
       <button type="button" class="play" disabled aria-label="Spela">${icon('play', 22, 'var(--white)')}</button>
       <div class="bars">${bars}</div>
       <span class="time">${formatDuration(e.duration_ms ?? 0)}</span>
@@ -81,5 +83,6 @@ export async function renderBook(id: string): Promise<HTMLElement> {
       ${ratingHtml(book.rating, 52)}
     </header>
     <div class="entries">${entries.map(entryHtml).join('')}</div>`;
+  mountPlayers(main);
   return main;
 }

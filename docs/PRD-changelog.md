@@ -85,6 +85,46 @@ The app has sat at 1.0.0 since build 1. From build 6 on, every native build is a
 - Changelog section titles become `## 1.1.0 (build 6, date, TestFlight)`; the existing 1.0.0
   sections stay as they are.
 
+## Invariant: a bundle without its Supabase config cannot exist
+
+What happened on 2026-10-25: `eas update --environment production` ignores the committed `.env`
+(it sets `EXPO_NO_DOTENV=1` and uses EAS environment variables), EAS had none, so two updates
+shipped with an empty Supabase URL and the app showed "Appen saknar inställningar för databasen".
+Nobody remembered a rule; a rule would not have helped. Four layers, each of which alone would have
+stopped it, and none of which depend on anyone remembering:
+
+1. **The config refuses to evaluate.** Replace `app.json` with `app.config.ts`. It reads
+   `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` and throws with a plain message
+   when either is empty or not an `https://*.supabase.co` URL. `expo export` (which every
+   `eas update` runs), `eas build`, `expo start` and `expo-doctor` all evaluate the config first,
+   so no bundle, build or dev server can come into being without the values. Local work keeps
+   using `.env`; EAS uses its environment variables; both go through the same check.
+2. **One source of truth for EAS.** `scripts/setup.mjs env` writes `.env` and also upserts the
+   same two values as plaintext EAS environment variables for `production`, `preview` and
+   `development` (`eas env:create` / `env:update`). The step is idempotent and runs in `npm run
+   setup`, so a fresh project cannot reach a build without them.
+3. **The pipeline proves the bundle.** `ship.yml`, before publishing, runs `expo export` under the
+   same environment flags EAS uses and greps the exported JS for the Supabase hostname. No
+   hostname, no publish, and the job output names the missing variable. The same assertion runs
+   in `check.yml` on every push with `EXPO_NO_DOTENV=1` and `eas env:exec --environment
+   production`, so a broken EAS environment fails CI before anyone ships.
+4. **The app refuses the bundle.** `lib/supabase.ts` drops the placeholder client. If the values
+   are missing at runtime and this is an over-the-air launch (`Updates.isEmbeddedLaunch` is
+   false), the app logs a fatal event to the local telemetry file and calls
+   `Updates.reloadAsync()` after marking the update as bad with `Updates.setUpdateURLAndRequestHeadersOverride`
+   is not needed: expo-updates already treats a JS exception during launch as a failed update and
+   rolls back to the embedded bundle on the next launch when `checkAutomatically` is `ON_ERROR_RECOVERY`
+   or when the launch crashes. So: throw at module load when unconfigured and not embedded. The
+   embedded bundle, which passed layer 1 at build time, takes over. The Login hint "Appen saknar
+   inställningar" goes away; it was only ever a symptom display.
+
+Layer 1 is the one that makes the state impossible; 2 to 4 make the failure loud if 1 is ever
+bypassed. Implement 1 and 2 first, in the same session that does the pipeline.
+
+The general rule this encodes, for CLAUDE.md: "Anything the app cannot run without is validated
+where the artifact is produced, never in a checklist. If a mistake shipped once, add the check
+that would have refused it, in code or in CI, in the same fix."
+
 ## Writing rules
 
 - Lines are for Viktor and relatives, one sentence each, no file names, no machine names.

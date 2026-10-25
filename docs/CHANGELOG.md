@@ -9,6 +9,12 @@ first eight characters of what `npm run logs` shows in the `app` column.
 What to test: tap the crayon on a book, draw, tap done; the drawing lands in the stream. Add a
 book and draw its cover.
 
+- Drawing: a crayon on the book page opens a white square with seven crayons and undo; the
+  drawing lands in the stream like a photo, with its question above it.
+- A drawing can be a book's cover: a crayon under the cover slot when adding a book, or a tap on
+  the empty cover of a book that has none.
+- Everything from the build 5 updates below.
+
 ### Update 01a173f0 (2026-10-25)
 
 - Hold a finger on any entry, or on the totals page, to send it as a picture card: the cover,
@@ -17,12 +23,6 @@ book and draw its cover.
   when she presses the button, not before. A tap outside the button closes the screen.
 - The camera button opens the camera straight away; photos are taken, never picked from the
   gallery, on the book page and for covers.
-
-- Drawing: a crayon on the book page opens a white square with seven crayons and undo; the
-  drawing lands in the stream like a photo, with its question above it.
-- A drawing can be a book's cover: a crayon under the cover slot when adding a book, or a tap on
-  the empty cover of a book that has none.
-- Everything from the build 5 updates below.
 
 ## Build 5 (2026-10-25, TestFlight)
 

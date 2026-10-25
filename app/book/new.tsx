@@ -11,7 +11,7 @@ import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
 import { WizardProgress, type WizardStep } from '@/components/WizardProgress';
 import { inspect } from '@/lib/machines/inspect';
-import { STEPS, newBookMachine, type Step } from '@/lib/machines/newBook';
+import { STEPS, newBookMachine } from '@/lib/machines/newBook';
 import { swishIn, swishOut } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { colors, fonts, radius } from '@/lib/theme';
@@ -30,8 +30,7 @@ export default function NewBook() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [state, send] = useMachine(newBookMachine, { inspect });
-  const { title, author, coverUri, book } = state.context;
-  const step: Step = state.matches('picture') || state.matches('picking') ? 'picture' : state.matches('title') ? 'title' : 'author';
+  const { step, title, author, coverUri, book } = state.context;
   const index = STEPS.indexOf(step);
   const canNext = state.can({ type: 'NEXT' });
   const busy = state.matches('picking') || state.matches('saving');

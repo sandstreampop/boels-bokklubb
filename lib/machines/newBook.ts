@@ -22,7 +22,14 @@ import type { Book } from '@/lib/types';
 export const STEPS = ['picture', 'title', 'author'] as const;
 export type Step = (typeof STEPS)[number];
 
-type Context = { title: string; author: string; coverUri: string | null; book: Book | null };
+type Context = {
+  /** The step on screen. Stays put through picking, saving, saved and closed, so nothing flashes on the way out. */
+  step: Step;
+  title: string;
+  author: string;
+  coverUri: string | null;
+  book: Book | null;
+};
 type Events =
   | { type: 'SET_TITLE'; title: string }
   | { type: 'SET_AUTHOR'; author: string }
@@ -45,14 +52,16 @@ export const newBookMachine = setup({
   actions: {
     /** Each step arrives like a screen: the swish. */
     stepIn: () => play('screen-in'),
+    setStep: assign((_, params: { step: Step }) => ({ step: params.step })),
   },
 }).createMachine({
   id: 'newBook',
-  context: { title: '', author: '', coverUri: null, book: null },
+  context: { step: 'picture', title: '', author: '', coverUri: null, book: null },
   initial: 'picture',
   on: { CLOSE: '.closed' },
   states: {
     picture: {
+      entry: { type: 'setStep', params: { step: 'picture' } },
       on: { PHOTO: 'picking', NEXT: 'title' },
     },
     picking: {
@@ -63,7 +72,7 @@ export const newBookMachine = setup({
       },
     },
     title: {
-      entry: 'stepIn',
+      entry: [{ type: 'setStep', params: { step: 'title' } }, 'stepIn'],
       on: {
         SET_TITLE: { actions: assign({ title: ({ event }) => event.title }) },
         NEXT: { guard: 'hasTitle', target: 'author' },
@@ -71,7 +80,7 @@ export const newBookMachine = setup({
       },
     },
     author: {
-      entry: 'stepIn',
+      entry: [{ type: 'setStep', params: { step: 'author' } }, 'stepIn'],
       on: {
         SET_AUTHOR: { actions: assign({ author: ({ event }) => event.author }) },
         NEXT: 'saving',

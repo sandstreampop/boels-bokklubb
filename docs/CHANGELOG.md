@@ -6,9 +6,6 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The unicorn is on stage: she peeks up bottom left when the app opens and lives there on every
-  screen. Tap her for a trick (spin, jump, sneeze, wiggle, roll over), never the same twice in a
-  row. She steps off while a card is being shared and ducks when the keyboard is up.
 - Sounds, as a layer: a pop on every button, a tick that climbs with each star, a twinkle on the
   wand, a scratch when a crayon stroke starts, a swish when a screen comes and goes. They follow
   the ring switch and stay quiet while the mic is open. Her own recordings always play, ring
@@ -27,6 +24,12 @@ open a book, record, write, draw, share a card.
 - The unicorn companion and its sounds are inside the app but not on stage yet.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
+
+### Update 01a17411 (2026-10-25)
+
+- The unicorn is on stage: she peeks up bottom left when the app opens and lives there on every
+  screen. Tap her for a trick (spin, jump, sneeze, wiggle, roll over), never the same twice in a
+  row. She steps off while a card is being shared and ducks when the keyboard is up.
 
 ## Build 6 (2026-10-25, TestFlight)
 

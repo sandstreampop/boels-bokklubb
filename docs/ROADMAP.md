@@ -56,10 +56,12 @@ Push to main ships: an update, or a native build with a new version number and t
 section in TestFlight's "What to Test". A push without its changelog line is refused. Live once
 Viktor has put the eight secrets into GitHub Actions (the cloud proxy blocks setting them).
 
-## Next: build 8, "släkten" (docs/PRD-build-8.md)
+## Done 2026-10-25: build 8, "släkten" (docs/PRD-build-8.md)
 
-Decided with Viktor 2026-10-25. The app on the web, read only, for relatives. The page is called
-Boels bokklubb; "släkten" is the build's name here only.
+Decided with Viktor 2026-10-25, shipped the same day: TestFlight build 8 (1.1.0, the migration)
+and four web ships (the shelf, the book page, her recordings, the totals). The page is live at
+https://sandstreampop.github.io/boels-bokklubb/ behind the link and the PIN. The app on the web,
+read only, for relatives. The page is called Boels bokklubb; "släkten" is the build's name here only.
 
 1. The three read screens rebuilt in `web/` (Vite, TypeScript, no framework): library, book page
    with her voice playable, stats. No plus button, mic, pencil, camera, crayon, star input or share.

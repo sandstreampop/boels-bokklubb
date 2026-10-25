@@ -11,7 +11,11 @@ its credit line.
 | `assets/unicorn.riv` | the unicorn companion | "Unicorni" by gianmarcog, <https://rive.app/marketplace/1151-2225-unicorni/>, runtime file from Rive's public CDN (`public.rive.app/community/runtime-files/1151-2225-unicorni.riv`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 Credit line: "Enhörningen: Unicorni av gianmarcog, CC BY 4.0." The file has one artboard, "New
-Artboard", one timeline animation, "Animation 1", and no state machine. If a remix with a state
+Artboard", one timeline animation, "Animation 1", and no state machine. One change to the file,
+allowed by CC BY: the artboard's dark background rectangle (fill #313131) has its alpha set to 0,
+so the unicorn sits on the app's pink instead of in a dark square. Done by patching the one
+colour value in the binary (offset 3822, property `colorValue` of a `SolidColor`); redo it if a new
+remix replaces the file. If a remix with a state
 machine replaces it, update this row and `components/Unicorn.tsx` only.
 
 ## Sounds

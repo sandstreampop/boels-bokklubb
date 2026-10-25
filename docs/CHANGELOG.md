@@ -6,10 +6,7 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- Sounds, as a layer: a pop on every button, a tick that climbs with each star, a twinkle on the
-  wand, a scratch when a crayon stroke starts, a swish when a screen comes and goes. They follow
-  the ring switch and stay quiet while the mic is open. Her own recordings always play, ring
-  switch or not. Every cover, card button, star and crayon squishes when pressed.
+- The unicorn sits on the pink, not in a dark square: the background of her artwork is see-through.
 - Three set pieces. Opening the app: the shelf cascades in book by book, the title springs, the
   unicorn peeks up. Saving anything: the card springs in with sparkles, a chime, and the unicorn
   hops. A book going rainbow: a rainbow sweeps out from the cover, stars rain, a fanfare plays,
@@ -30,6 +27,13 @@ open a book, record, write, draw, share a card.
 - The unicorn companion and its sounds are inside the app but not on stage yet.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
+
+### Update 01a17418 (2026-10-25)
+
+- Sounds, as a layer: a pop on every button, a tick that climbs with each star, a twinkle on the
+  wand, a scratch when a crayon stroke starts, a swish when a screen comes and goes. They follow
+  the ring switch and stay quiet while the mic is open. Her own recordings always play, ring
+  switch or not. Every cover, card button, star and crayon squishes when pressed.
 
 ### Update 01a17411 (2026-10-25)
 

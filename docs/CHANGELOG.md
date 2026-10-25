@@ -4,6 +4,14 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
+## Unreleased
+
+- The shared card fills the picture instead of sitting in a corner.
+
+## Unreleased
+
+- The shared card fills the whole picture instead of one corner.
+
 ## Build 6 (2026-10-25, TestFlight)
 
 What to test: tap the crayon on a book, draw, tap done; the drawing lands in the stream. Add a

@@ -232,7 +232,8 @@ a {
 }
 
 .cover-wrap {
-  border-radius: var(--radius-lg);
+  --r: var(--radius-lg);
+  border-radius: var(--r);
 }
 
 /* The rainbow ring a complete book earns: a gradient drawn 4px outside the cover. */
@@ -240,12 +241,12 @@ a {
   padding: 4px;
   margin: -4px;
   background: linear-gradient(135deg, var(--rainbow));
-  border-radius: calc(var(--radius-lg) + 4px);
+  border-radius: calc(var(--r) + 4px);
 }
 
 .cover {
   aspect-ratio: 4 / 5;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r);
   overflow: hidden;
   background: var(--pinkSoft);
   box-shadow: var(--shadow);
@@ -290,4 +291,231 @@ a {
   display: flex;
   gap: 1px;
   margin-top: 4px;
+}
+
+/* ---- the book page --------------------------------------------------------------------------- */
+
+.back {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  left: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--pinkSoft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  z-index: 2;
+}
+
+.book-header {
+  display: grid;
+  gap: 22px;
+  padding: 52px 0 24px;
+}
+
+.cover-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.cover-wrap.big {
+  --r: var(--radius-md);
+  width: 120px;
+  height: 150px;
+  flex: none;
+}
+
+.cover-wrap.big .cover {
+  width: 120px;
+  height: 150px;
+  aspect-ratio: auto;
+}
+
+.cover-wrap.big .initial {
+  font-size: 56px;
+}
+
+.title-block {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 6px;
+}
+
+.book-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 32px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.rating {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+.star {
+  display: block;
+  line-height: 0;
+}
+
+.entries {
+  display: grid;
+  gap: 14px;
+}
+
+.entry {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 5px 12px rgba(233, 103, 155, 0.1);
+  min-width: 0;
+}
+
+.entry p {
+  margin: 0;
+}
+
+.body {
+  font-family: var(--font-body);
+  font-size: 19px;
+  line-height: 27px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.prompt,
+.prompt-inline {
+  font-family: var(--font-body);
+  color: var(--muted);
+}
+
+.prompt {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.picture {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--pinkSoft);
+}
+
+.picture.drawing {
+  aspect-ratio: 1;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.audio {
+  display: grid;
+  gap: 10px;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.play {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 0;
+  padding: 0;
+  background: var(--pinkDeep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: none;
+}
+
+.play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bars {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 28px;
+}
+
+.bar {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--pink);
+}
+
+.bar.lit {
+  background: var(--pinkDeep);
+}
+
+.time {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.transcript {
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 25px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.transcript-pending {
+  display: grid;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.transcript-pending span {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--pinkSoft);
+}
+
+.entry-footer {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
 }

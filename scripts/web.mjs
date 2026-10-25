@@ -155,14 +155,14 @@ async function check() {
   const failures = [];
   const state = {};
 
-  async function open({ name, viewport, mobile, hash, storage, steps }) {
+  async function open({ name, viewport, mobile, hash, storage, steps, ignore = /$^/ }) {
     const context = await browser.newContext({ viewport, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile, locale: 'sv-SE' });
     if (storage) await context.addInitScript((s) => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, v)), storage);
     const page = await context.newPage();
     const problems = [];
     page.on('console', (m) => {
       // A wrong PIN is a 401 by design; Chromium logs every non-2xx response as a console error.
-      if (m.type() === 'error' && !/status of 401/.test(m.text())) problems.push(`console.error: ${m.text()}`);
+      if (m.type() === 'error' && !/status of 401/.test(m.text()) && !ignore.test(m.text())) problems.push(`console.error: ${m.text()}`);
     });
     page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
     await page.route('**/*', async (route) => {
@@ -265,6 +265,50 @@ async function check() {
     },
   });
 
+  const fb = fixture.book;
+  const kinds = (k) => fb.entries.filter((e) => e.kind === k);
+  await open({
+    name: 'a cover opens the book: cover, stars, every entry shape, back to the shelf',
+    ...phone,
+    storage: { 'bokklubb.pass': stored.pass ?? '', 'bokklubb.pass.expires': String(Date.now() + 86400e3), 'bokklubb.token': fixture.token },
+    steps: async (page, { expect }) => {
+      await page.waitForSelector('.library .grid .book');
+      await page.click(`.book[href="#/book/${fb.book.id}"]`);
+      await page.waitForSelector('.book-page .entries .entry');
+      expect((await page.textContent('.book-name')) === fb.book.title, 'the title');
+      expect((await page.textContent('.author')) === fb.book.author, 'the author');
+      expect((await count(page, '.cover-wrap.big.ring')) === (fb.book.complete ? 1 : 0), 'the ring on the cover');
+      expect((await count(page, '.cover-wrap.big .cover img')) === 1, 'the cover picture');
+      expect((await count(page, '.rating .star')) === 5, 'five stars');
+      expect((await count(page, '.rating .star.filled')) === fb.book.rating, `${fb.book.rating} filled`);
+      expect((await count(page, '.entry')) === fb.entries.length, `${fb.entries.length} entries`);
+      expect((await page.getAttribute('.entry', 'data-id')) === fb.entries[0].id, 'newest first');
+      expect((await count(page, '.entry.text .prompt-inline')) === 2, 'a fill-in prompt wraps her words');
+      expect((await count(page, '.entry.text .prompt')) === kinds('text').filter((e) => e.prompt && !e.prompt.includes('___')).length, 'a plain prompt above her words');
+      expect((await count(page, '.entry.audio .player')) === kinds('audio').length, 'a player on every recording');
+      expect((await count(page, '.entry.audio .transcript')) === kinds('audio').filter((e) => e.transcript).length, 'the transcript under a done recording');
+      expect((await count(page, '.entry.audio .transcript-pending')) === kinds('audio').filter((e) => !e.transcript && e.transcript_status !== 'failed').length, 'two grey bars under a pending one');
+      expect((await count(page, '.entry.photo .picture img')) === kinds('photo').length, 'the photo');
+      expect((await count(page, '.entry.drawing .picture.drawing img')) === kinds('drawing').length, 'the drawing, square');
+      expect((await count(page, '.entry time')) === fb.entries.length, 'a date on every entry');
+      expect((await count(page, '.share, .shareBtn')) === 0, 'no share button');
+      await page.click('.back');
+      await page.waitForSelector('.library .grid .book');
+    },
+  });
+
+  await open({
+    name: 'a book link that is not there goes back to the shelf',
+    ...phone,
+    hash: '#/book/99999999-9999-4999-8999-999999999999',
+    // The 404 is the point of this scenario; the page reports it once and goes to the shelf.
+    ignore: /status of 404/,
+    storage: { 'bokklubb.pass': stored.pass ?? '', 'bokklubb.pass.expires': String(Date.now() + 86400e3), 'bokklubb.token': fixture.token },
+    steps: async (page, { expect }) => {
+      await page.waitForSelector('.library .grid .book');
+      expect((await count(page, '.book-page')) === 0, 'no book page');
+    },
+  });
   await open({
     name: 'an expired pass shows the PIN screen again',
     ...phone,

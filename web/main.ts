@@ -9,6 +9,7 @@ import favicon from '../assets/favicon.png';
 import icon from '../assets/icon.png';
 import { colors, radius, rainbow } from '../lib/theme';
 import { FeedError, getPass, getToken, rememberToken } from './api';
+import { renderBook } from './book';
 import { renderLibrary } from './library';
 import { renderPin, renderTitleOnly } from './pin';
 import { captureError, crumb, startTelemetry } from './telemetry';
@@ -63,12 +64,12 @@ async function render() {
     show(token ? 'pin' : 'title', token ? renderPin(token, () => void render()) : renderTitleOnly());
     return;
   }
-  // The book page and the stats ship next; until then every route shows the library.
-  const key = 'library';
+  // The stats ship next; until then that route shows the library.
+  const key = route.screen === 'book' ? `book:${route.id}` : 'library';
   if (shown === key) return;
   crumb('route', route);
   try {
-    show(key, await renderLibrary());
+    show(key, route.screen === 'book' ? await renderBook(route.id) : await renderLibrary());
   } catch (err) {
     if (err instanceof FeedError && err.status === 401) {
       // The pass is gone (expired, or the secrets were rotated): the PIN screen again.
@@ -77,6 +78,8 @@ async function render() {
       return;
     }
     captureError('render', err, { route });
+    // A book that is not there (a stale link) goes back to the shelf.
+    if (route.screen !== 'library') location.replace('#/');
   }
 }
 

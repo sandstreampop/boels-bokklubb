@@ -80,7 +80,7 @@ export default function BookPage() {
             <RoundButton icon="mic" size={74} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
             <RoundButton icon="pencil" size={74} color={colors.pink} label="Skriv" onPress={() => send({ type: 'START_WRITING' })} />
             <RoundButton icon="camera" size={74} color={colors.pink} label="Fota" onPress={() => send({ type: 'TAKE_PHOTO' })} />
-            <RoundButton icon="crayon" size={74} color={colors.pink} label="Rita" onPress={() => send({ type: 'START_DRAWING' })} />
+            <RoundButton icon="brush" size={74} color={colors.pink} label="Rita" onPress={() => send({ type: 'START_DRAWING' })} />
           </View>
         </View>
       ) : null,

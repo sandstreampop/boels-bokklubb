@@ -60,7 +60,7 @@ export default function NewBook() {
                 <Icon name="camera" size={26} color={colors.pinkDeep} />
               </Pressable>
               <Pressable onPress={() => send({ type: 'DRAW' })} style={styles.coverBtn} accessibilityLabel="Rita omslaget">
-                <Icon name="crayon" size={26} color={colors.pinkDeep} />
+                <Icon name="brush" size={26} color={colors.pinkDeep} />
               </Pressable>
             </View>
           </View>

@@ -19,7 +19,7 @@ export function StatTiles({ stats, scale = 1 }: { stats: Stats; scale?: number }
       <Tile icon="mic" value={stats.audio} label="Röster" scale={scale} />
       <Tile icon="pencil" value={stats.text} label="Tankar" scale={scale} />
       <Tile icon="camera" value={stats.photo} label="Foton" scale={scale} />
-      <Tile icon="crayon" value={stats.drawing} label="Teckningar" scale={scale} />
+      <Tile icon="brush" value={stats.drawing} label="Teckningar" scale={scale} />
     </View>
   );
 }

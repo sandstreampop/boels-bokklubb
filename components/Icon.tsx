@@ -20,7 +20,7 @@ export type IconName =
   | 'refresh'
   | 'wand'
   | 'book'
-  | 'crayon'
+  | 'brush'
   | 'undo'
   | 'share';
 
@@ -105,11 +105,11 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
           <Path d="M4 20a2 2 0 0 1 2-2h12.5v3H6a2 2 0 0 1-2-2z" {...common} />
         </>
       )}
-      {name === 'crayon' && (
+      {name === 'brush' && (
         <>
-          <Path d="M7 21l-3-3 11-11 3 3z" {...common} />
-          <Path d="M15 7l2.2-2.2a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L18 10" {...common} />
-          <Path d="M4 18l-1 4 4-1" {...common} />
+          <Line x1={4} y1={20} x2={11} y2={13} {...common} strokeWidth={strokeWidth + 0.8} />
+          <Path d="M11 13l7-7a2.3 2.3 0 0 1 3.2 3.2l-7 7z" {...common} />
+          <Path d="M8.5 15.5c-2 .5-3 2-2.5 4.5 2.5.5 4-.5 4.5-2.5" {...common} />
         </>
       )}
       {name === 'undo' && (

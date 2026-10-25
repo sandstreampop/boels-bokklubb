@@ -12,7 +12,6 @@ import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold } from '@expo-goo
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Login } from '@/components/Login';
 import { ShareHost } from '@/components/ShareHost';
-import { TouchWatcher } from '@/components/TouchWatcher';
 import { Unicorn } from '@/components/Unicorn';
 import { AppActor } from '@/lib/machines/app';
 import { unicornMoment } from '@/lib/machines/unicorn';
@@ -75,19 +74,17 @@ function Root() {
         <ErrorBoundary>
           {signedIn ? (
             <>
-              <TouchWatcher>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: colors.bg },
-                    animation: 'slide_from_right',
-                  }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-                  <Stack.Screen name="book/[id]" />
-                  <Stack.Screen name="stats" />
-                </Stack>
-              </TouchWatcher>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.bg },
+                  animation: 'slide_from_right',
+                }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="book/[id]" />
+                <Stack.Screen name="stats" />
+              </Stack>
               <Unicorn />
               <ShareHost />
             </>

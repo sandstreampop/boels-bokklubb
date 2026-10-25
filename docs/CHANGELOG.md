@@ -6,16 +6,12 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The unicorn sits on the pink, not in a dark square: the background of her artwork is see-through.
-- Three set pieces. Opening the app: the shelf cascades in book by book, the title springs, the
-  unicorn peeks up. Saving anything: the card springs in with sparkles, a chime, and the unicorn
-  hops. A book going rainbow: a rainbow sweeps out from the cover, stars rain, a fanfare plays,
-  the unicorn jumps and the ring draws itself around the cover. Once per book.
-- The unicorn has a voice (a chirp when she appears, a trill when she is happy, a yawn, a sneeze,
-  a "hm?") and follows her into every mode: she sways beside the timer while the mic is open, sits
-  under the text and below the canvas nodding now and then, and leaves while a card is shared.
-  Ten seconds without a touch and she yawns and leans toward the button that matters: plus on the
-  shelf, the mic on a book, done when writing or drawing. Enhörningens röst: rubberduck
+- The unicorn has moved to the top right corner and rests there: after her entrance she only moves
+  when something happens. Tap her for a trick, save something and she hops, finish a rainbow book
+  and she jumps. No fidgeting in between.
+- The unicorn has a voice: a chirp when she arrives, a trill when she is happy, a sneeze when she
+  sneezes. She follows into every mode, beside the timer while the mic is open, under the text,
+  below the canvas, and leaves while a card is shared. Enhörningens röst: rubberduck
   (opengameart.org), CC0.
 
 ## Build 7 (2026-10-25, TestFlight)
@@ -27,6 +23,14 @@ open a book, record, write, draw, share a card.
 - The unicorn companion and its sounds are inside the app but not on stage yet.
 - Enhörningen: Unicorni av gianmarcog, CC BY 4.0. Ljud: Kenney (kenney.nl), CC0.
 - Everything from build 6 and its updates below.
+
+### Update 01a1741a (2026-10-25)
+
+- The unicorn sits on the pink, not in a dark square: the background of her artwork is see-through.
+- Three set pieces. Opening the app: the shelf cascades in book by book, the title springs, the
+  unicorn peeks up. Saving anything: the card springs in with sparkles, a chime, and the unicorn
+  hops. A book going rainbow: a rainbow sweeps out from the cover, stars rain, a fanfare plays,
+  the unicorn jumps and the ring draws itself around the cover. Once per book.
 
 ### Update 01a17418 (2026-10-25)
 

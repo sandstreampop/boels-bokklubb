@@ -15,6 +15,12 @@ else in the app; do not add counters, funnels or "engagement" events. No usage o
 
 ## 2. The companion
 
+**Amended 2026-10-25 by Viktor after seeing her on the phone:** her home is top right, not bottom
+left (headers keep clear of her; no keyboard ducking needed). After the launch animation she is at
+rest and animates only when interacted with: tap tricks, the saved hop, the rainbow jump. No idle
+hints, no sway while recording, no nods while writing or drawing. The paragraphs below are the
+original; where they differ, the amendment wins.
+
 A unicorn. Always on screen, in a fixed home, bottom left, on every screen. It never covers content:
 screens get bottom padding for it, and it ducks (slides down to a peek) while the keyboard is open.
 

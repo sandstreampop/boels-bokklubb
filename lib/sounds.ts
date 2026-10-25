@@ -29,9 +29,7 @@ import crayon from '../assets/sounds/crayon.m4a';
 import wand from '../assets/sounds/wand.m4a';
 import unicorn_chirp from '../assets/sounds/unicorn-chirp.m4a';
 import unicorn_trill from '../assets/sounds/unicorn-trill.m4a';
-import unicorn_yawn from '../assets/sounds/unicorn-yawn.m4a';
 import unicorn_sneeze from '../assets/sounds/unicorn-sneeze.m4a';
-import unicorn_hm from '../assets/sounds/unicorn-hm.m4a';
 import { captureError, debug, info } from './telemetry';
 
 export type SoundName =
@@ -49,9 +47,7 @@ export type SoundName =
   | 'wand'
   | 'unicorn-chirp'
   | 'unicorn-trill'
-  | 'unicorn-yawn'
-  | 'unicorn-sneeze'
-  | 'unicorn-hm';
+  | 'unicorn-sneeze';
 
 /** Built by scripts/sounds.mjs; sources and licences in docs/CREDITS.md. */
 const manifest: Record<SoundName, AudioSource | null> = {
@@ -70,9 +66,7 @@ const manifest: Record<SoundName, AudioSource | null> = {
   // The unicorn's voice: one creature from rubberduck's CC0 pack on OpenGameArt, each under a second.
   'unicorn-chirp': unicorn_chirp,
   'unicorn-trill': unicorn_trill,
-  'unicorn-yawn': unicorn_yawn,
   'unicorn-sneeze': unicorn_sneeze,
-  'unicorn-hm': unicorn_hm,
 };
 
 /** The app's resting audio mode: effects obey the ring switch and never interrupt other apps. */

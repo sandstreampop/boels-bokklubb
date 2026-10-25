@@ -34,6 +34,7 @@ const PACKS = {
   },
   // The unicorn's voice: one synthesised squeaky creature, ten "cute" variants plus a cough and a
   // nose sound in the same voice. Freesound refuses the cloud session; this pack is CC0 on its page.
+  // (A yawn and a "hm?" were picked too, cute_10 and cute_08, then dropped with the idle hints.)
   'creature-sfx': {
     title: '80 CC0 creature SFX',
     page: 'https://opengameart.org/content/80-cc0-creature-sfx',
@@ -57,9 +58,7 @@ const PICKS = [
   { name: 'wand', pack: 'interface-sounds', file: 'Audio/glass_001.ogg', use: 'wand reroll, a twinkle' },
   { name: 'unicorn-chirp', pack: 'creature-sfx', file: 'cute_02.ogg', use: 'the unicorn appears, a chirp' },
   { name: 'unicorn-trill', pack: 'creature-sfx', file: 'cute_05.ogg', use: 'the unicorn is happy, a trill' },
-  { name: 'unicorn-yawn', pack: 'creature-sfx', file: 'cute_10.ogg', use: 'the unicorn yawns' },
   { name: 'unicorn-sneeze', pack: 'creature-sfx', file: 'cough_02.ogg', use: 'the unicorn sneezes' },
-  { name: 'unicorn-hm', pack: 'creature-sfx', file: 'cute_08.ogg', use: 'the unicorn wonders, "hm?"' },
 ];
 
 const PEAK_DB = -3;

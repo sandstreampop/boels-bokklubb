@@ -44,7 +44,7 @@ export default function BookPage() {
   const writing = state.matches('writing');
   const drawing = state.matches('drawing');
   const drawingCover = state.matches('drawingCover');
-  useScreen('book', { id, found: !!book }, 'mic');
+  useScreen('book', { id, found: !!book });
 
   useFocusEffect(
     useCallback(() => {
@@ -121,7 +121,7 @@ export default function BookPage() {
         keyExtractor={(e) => e.id}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + UNICORN.padding,
+          paddingBottom: insets.bottom + 40,
           paddingHorizontal: 20,
           gap: 14,
         }}
@@ -197,7 +197,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   initial: { fontFamily: fonts.display, fontSize: 56, color: 'rgba(255,255,255,0.9)' },
-  titleBlock: { flex: 1, minWidth: 0, gap: 4, paddingBottom: 6 },
+  // The unicorn sits top right; a tall title stops short of her.
+  titleBlock: { flex: 1, minWidth: 0, gap: 4, paddingBottom: 6, paddingRight: UNICORN.clearance - 20 },
   title: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32, color: colors.text },
   author: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.muted },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 4 },

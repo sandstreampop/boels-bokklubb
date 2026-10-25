@@ -12,7 +12,7 @@
 import { assign, fromPromise, setup } from 'xstate';
 
 import { addAudioEntry, addDrawingEntry, addPhotoEntry, rateBook, setDrawnCover } from '@/lib/actions';
-import { setUnicornHint, setUnicornPose, type HintTarget, type Pose } from '@/lib/machines/unicorn';
+import { setUnicornPose, type Pose } from '@/lib/machines/unicorn';
 import { takePhoto } from '@/lib/images';
 import { pickPrompt } from '@/lib/prompts';
 import { captureError, debug } from '@/lib/telemetry';
@@ -63,12 +63,9 @@ export const bookMachine = setup({
     ),
   },
   actions: {
-    // Where the unicorn sits and what she leans toward: the full-screen modes mount their own
-    // instance with the matching pose, and `home` brings the root one back.
-    pose: (_, params: { pose: Pose; hint: HintTarget }) => {
-      setUnicornPose(params.pose);
-      setUnicornHint(params.hint);
-    },
+    // Where the unicorn sits: the full-screen modes mount their own instance with the matching
+    // pose, and `home` brings the root one back.
+    pose: (_, params: { pose: Pose }) => setUnicornPose(params.pose),
     reroll: assign(({ event }) => {
       if (event.type !== 'REROLL_PROMPT') return {};
       debug('prompt.reroll', { pool: event.pool });
@@ -99,7 +96,7 @@ export const bookMachine = setup({
   },
   states: {
     idle: {
-      entry: { type: 'pose', params: { pose: 'home', hint: 'mic' } },
+      entry: { type: 'pose', params: { pose: 'home' } },
       on: {
         START_WRITING: 'writing',
         TAKE_PHOTO: 'takingPhoto',
@@ -109,7 +106,7 @@ export const bookMachine = setup({
       },
     },
     drawing: {
-      entry: [assign({ drawPrompt: () => pickPrompt('draw') }), { type: 'pose', params: { pose: 'drawing', hint: 'done' } }],
+      entry: [assign({ drawPrompt: () => pickPrompt('draw') }), { type: 'pose', params: { pose: 'drawing' } }],
       on: { DRAWING_DONE: 'savingDrawing' },
     },
     savingDrawing: {
@@ -121,7 +118,7 @@ export const bookMachine = setup({
       },
     },
     drawingCover: {
-      entry: { type: 'pose', params: { pose: 'drawing', hint: 'done' } },
+      entry: { type: 'pose', params: { pose: 'drawing' } },
       on: { COVER_DONE: 'savingCover' },
     },
     savingCover: {
@@ -133,7 +130,7 @@ export const bookMachine = setup({
       },
     },
     writing: {
-      entry: { type: 'pose', params: { pose: 'writing', hint: 'done' } },
+      entry: { type: 'pose', params: { pose: 'writing' } },
       on: { WRITING_DONE: { target: 'idle', actions: assign({ writePrompt: () => pickPrompt('write') }) } },
     },
     takingPhoto: {
@@ -145,7 +142,7 @@ export const bookMachine = setup({
       },
     },
     recording: {
-      entry: [assign({ speakPrompt: () => pickPrompt('speak') }), { type: 'pose', params: { pose: 'recording', hint: null } }],
+      entry: [assign({ speakPrompt: () => pickPrompt('speak') }), { type: 'pose', params: { pose: 'recording' } }],
       on: { RECORDING_DONE: 'savingAudio', RECORDING_UNAVAILABLE: 'idle', RECORDING_SKIPPED: 'idle' },
     },
     savingAudio: {

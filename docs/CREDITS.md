@@ -41,9 +41,7 @@ rubberduck (opengameart.org), CC0."
 | `assets/sounds/wand.m4a` | wand reroll, a twinkle | [Interface Sounds](https://kenney.nl/assets/interface-sounds) `Audio/glass_001.ogg` | CC0 |
 | `assets/sounds/unicorn-chirp.m4a` | the unicorn appears, a chirp | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_02.ogg` | CC0 |
 | `assets/sounds/unicorn-trill.m4a` | the unicorn is happy, a trill | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_05.ogg` | CC0 |
-| `assets/sounds/unicorn-yawn.m4a` | the unicorn yawns | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_10.ogg` | CC0 |
 | `assets/sounds/unicorn-sneeze.m4a` | the unicorn sneezes | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cough_02.ogg` | CC0 |
-| `assets/sounds/unicorn-hm.m4a` | the unicorn wonders, "hm?" | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) by rubberduck, `cute_08.ogg` | CC0 |
 
 The picks were made by Kenney's own file names and measured length, not by ear: the session that
 made them had no speaker. If one sounds wrong on the phone, change its line in
@@ -51,14 +49,15 @@ made them had no speaker. If one sounds wrong on the phone, change its line in
 
 ## The unicorn's voice
 
-Five clips under a second each, one character, no words. Freesound answers 403 to the cloud
+Three clips under a second each, one character, no words (a yawn and a "hm?" were picked too,
+`cute_10` and `cute_08`, and dropped when the idle hints went: she rests between cues). Freesound answers 403 to the cloud
 session (the block is Freesound's, not the proxy's) and Kenney has no animal, so the search went to
 OpenGameArt filtered to CC0. The pick is rubberduck's "80 CC0 creature SFX" (2018): its ten
 `cute_*` files are one synthesised squeaky creature (fundamental about 430 to 650 Hz), and its
 cough and nose sounds are unpitched, so the sneeze fits any voice. Chosen by name and by measured
 pitch envelope, not by ear, like the Kenney picks: if one sounds wrong, the alternatives in the
-same voice are `cute_07` (a flat blip) for the chirp, `cute_09` (a smooth "weee") for the trill,
-`ooh.ogg` for the yawn and `nose.ogg` for the sneeze. The `null` manifest path still works for any
+same voice are `cute_07` (a flat blip) for the chirp, `cute_09` (a smooth "weee") for the trill
+and `nose.ogg` for the sneeze. The `null` manifest path still works for any
 clip removed.
 
 ## How the sound sources were evaluated (PRD build 7 §3, in that order)

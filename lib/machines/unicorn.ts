@@ -1,21 +1,17 @@
-// The unicorn companion's brain (PRD build 7 §2). One module-level actor. Screens send MOMENT,
-// HIDE, SHOW and SET_POSE; the gesture sends TAP; the keyboard sends DUCK/UNDUCK; TouchWatcher sends
-// SET_TOUCHED on every touch. The view (components/Unicorn.tsx) renders the state and decides nothing.
+// The unicorn companion's brain (PRD build 7 §2, amended 2026-10-25: she rests, and moves only
+// when something happens). One module-level actor. Screens send MOMENT, HIDE, SHOW and SET_POSE;
+// the gesture sends TAP. The view (components/Unicorn.tsx) renders the state and decides nothing.
 //
-//   idle ──10 s──▶ idleHint ──(hint done)──▶ idleWait ──20 s──▶ idleHint
-//     ▲  SET_TOUCHED from idleHint/idleWait ◀──────────────────────┘
-//     │
-//     ├──TAP (queue a trick) ───┐
-//     ├──MOMENT (queue it) ─────┴──▶ playing ──after the cue's length──▶ playing (next in queue) or idle
-//     │                               TAP / MOMENT while playing only queue; nothing interrupts a cue
+//   idle ──TAP (queue a trick) ───┐
+//   idle ──MOMENT (queue it) ─────┴──▶ playing ──after the cue's length──▶ playing (next in queue) or idle
+//                                       TAP / MOMENT while playing only queue; nothing interrupts a cue
 //   HIDE from anywhere ──▶ hidden ──SHOW──▶ idle          (share sheet, cards, screenshots)
-//   DUCK from anywhere but hidden ──▶ ducked ──UNDUCK──▶ idle   (keyboard open: slides down to a peek)
 //
-// Rules, decided: a moment interrupts an idle hint; nothing interrupts a moment or a trick; tricks
-// never repeat the one before; HIDE wins over everything; hidden and ducked drop the queue (she is
-// elsewhere). No sleep gesture. Nothing here reads usage; the breadcrumbs are for bugs.
+// Rules, decided: at rest she is still (the Rive loop is paused); a cue plays the loop and the
+// Reanimated sequence, then she rests again. Nothing interrupts a cue; tricks never repeat the one
+// before; HIDE wins over everything and drops the queue. No idle hints, no sleep gesture. Nothing
+// here reads usage; the breadcrumbs are for bugs.
 
-import { AppState } from 'react-native';
 import { assign, createActor, setup } from 'xstate';
 
 import { inspect } from './inspect';
@@ -26,10 +22,8 @@ export const TRICKS = ['spin', 'jump', 'sneeze', 'wiggle', 'roll'] as const;
 export type TrickName = (typeof TRICKS)[number];
 export const MOMENTS = ['launch', 'saved', 'rainbow'] as const;
 export type MomentName = (typeof MOMENTS)[number];
-/** Where she is: decides where the unicorn sits and how it moves between cues. */
+/** Where she is: decides which instance is on stage (a full-screen Modal mounts its own). */
 export type Pose = 'home' | 'recording' | 'writing' | 'drawing';
-/** The most useful button on the current screen, for the idle lean. */
-export type HintTarget = 'plus' | 'mic' | 'done' | null;
 export type Cue = { kind: 'trick'; name: TrickName } | { kind: 'moment'; name: MomentName };
 
 /** How long each cue holds the stage, and what it says. The view animates to match. */
@@ -44,11 +38,6 @@ export const CUES: Record<TrickName | MomentName, { ms: number; sound: SoundName
   // The fanfare belongs to the set piece (components/RainbowCelebration.tsx), not the unicorn.
   rainbow: { ms: 1600, sound: null },
 };
-export const IDLE_MS = 10_000;
-export const IDLE_REPEAT_MS = 20_000;
-export const HINT_MS = 1_800;
-/** Into the hint: the yawn first, then the look and lean toward the button with a "hm?". */
-export const HINT_LEAN_MS = 800;
 /** Taps while a cue plays queue up to this many tricks; a mash is not a to-do list. */
 const MAX_QUEUED_TRICKS = 2;
 
@@ -57,8 +46,7 @@ type Context = {
   current: Cue | null;
   lastTrick: TrickName | null;
   pose: Pose;
-  hint: HintTarget;
-  /** The launch moment has played: until then every home instance stays below the shelf. */
+  /** The launch moment has played: until then the home instance stays off the edge. */
   launched: boolean;
 };
 type Events =
@@ -66,21 +54,12 @@ type Events =
   | { type: 'MOMENT'; name: MomentName }
   | { type: 'HIDE' }
   | { type: 'SHOW' }
-  | { type: 'DUCK' }
-  | { type: 'UNDUCK' }
-  // SET_ prefixed on purpose: the inspector keeps SET_ events out of the breadcrumbs, and these fire
-  // on every touch and every screen.
-  | { type: 'SET_TOUCHED' }
-  | { type: 'SET_POSE'; pose: Pose }
-  | { type: 'SET_HINT'; target: HintTarget };
+  // SET_ prefixed on purpose: the inspector keeps SET_ events out of the breadcrumbs.
+  | { type: 'SET_POSE'; pose: Pose };
 
 export const unicornMachine = setup({
   types: { context: {} as Context, events: {} as Events },
   delays: {
-    IDLE: IDLE_MS,
-    REPEAT: IDLE_REPEAT_MS,
-    HINT: HINT_MS,
-    LEAN: HINT_LEAN_MS,
     CUE: ({ context }) => (context.current ? CUES[context.current.name].ms : 0),
   },
   guards: {
@@ -110,53 +89,22 @@ export const unicornMachine = setup({
       info('unicorn.cue', { kind: cue.kind, name: cue.name, pose: context.pose });
     },
     clearStage: assign({ queue: [], current: null }),
-    hintSound: ({ context }) => {
-      // Silent while she records: the yawn would be the loudest thing in her voice note.
-      if (context.pose !== 'recording') play('unicorn-yawn');
-      info('unicorn.hint', { target: context.hint, pose: context.pose });
-    },
-    leanSound: ({ context }) => {
-      if (context.pose !== 'recording' && context.hint) play('unicorn-hm');
-    },
     setPose: assign(({ event }) => (event.type === 'SET_POSE' ? { pose: event.pose } : {})),
-    setHint: assign(({ event }) => (event.type === 'SET_HINT' ? { hint: event.target } : {})),
   },
 }).createMachine({
   id: 'unicorn',
-  context: { queue: [], current: null, lastTrick: null, pose: 'home', hint: null, launched: false },
+  context: { queue: [], current: null, lastTrick: null, pose: 'home', launched: false },
   initial: 'idle',
   on: {
     HIDE: '.hidden',
-    DUCK: '.ducked',
     SET_POSE: { actions: 'setPose' },
-    SET_HINT: { actions: 'setHint' },
   },
   states: {
     idle: {
-      after: { IDLE: 'idleHint' },
       on: {
         TAP: { target: 'playing', actions: 'queueTrick' },
         MOMENT: { target: 'playing', actions: 'queueMoment' },
-        SET_TOUCHED: { target: 'idle', reenter: true },
-        UNDUCK: {},
         SHOW: {},
-      },
-    },
-    idleHint: {
-      entry: 'hintSound',
-      after: { LEAN: { actions: 'leanSound' }, HINT: 'idleWait' },
-      on: {
-        TAP: { target: 'playing', actions: 'queueTrick' },
-        MOMENT: { target: 'playing', actions: 'queueMoment' },
-        SET_TOUCHED: 'idle',
-      },
-    },
-    idleWait: {
-      after: { REPEAT: 'idleHint' },
-      on: {
-        TAP: { target: 'playing', actions: 'queueTrick' },
-        MOMENT: { target: 'playing', actions: 'queueMoment' },
-        SET_TOUCHED: 'idle',
       },
     },
     playing: {
@@ -175,11 +123,7 @@ export const unicornMachine = setup({
     },
     hidden: {
       entry: 'clearStage',
-      on: { SHOW: 'idle', DUCK: {} },
-    },
-    ducked: {
-      entry: 'clearStage',
-      on: { UNDUCK: 'idle' },
+      on: { SHOW: 'idle' },
     },
   },
 });
@@ -194,11 +138,6 @@ export function startUnicorn() {
   if (started) return;
   started = true;
   unicorn.start();
-  // The idle timers run on in the background; coming back counts as a touch, so she does not
-  // yawn at the first glance.
-  AppState.addEventListener('change', (s) => {
-    if (s === 'active') unicorn.send({ type: 'SET_TOUCHED' });
-  });
 }
 
 function send(event: Events) {
@@ -213,11 +152,5 @@ export const unicornTap = () => send({ type: 'TAP' });
 /** Off stage, for share sheets and anything captured as an image. */
 export const hideUnicorn = () => send({ type: 'HIDE' });
 export const showUnicorn = () => send({ type: 'SHOW' });
-/** Keyboard open: slides down to a peek. */
-export const duckUnicorn = (ducked: boolean) => send({ type: ducked ? 'DUCK' : 'UNDUCK' });
-/** Which full-screen mode she is in, so the right instance shows and moves accordingly. */
+/** Which full-screen mode she is in, so the right instance shows. */
 export const setUnicornPose = (pose: Pose) => send({ type: 'SET_POSE', pose });
-/** The button the idle lean points at on the current screen. */
-export const setUnicornHint = (target: HintTarget) => send({ type: 'SET_HINT', target });
-/** Any touch anywhere: resets the idle timer. Sent by components/TouchWatcher.tsx. */
-export const unicornTouched = () => send({ type: 'SET_TOUCHED' });

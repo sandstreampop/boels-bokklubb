@@ -26,7 +26,7 @@ export default function Library() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const cardWidth = Math.floor((Math.min(width, 700) - GUTTER * 2 - GAP) / 2);
-  useScreen('library', { books: books.length }, 'plus');
+  useScreen('library', { books: books.length });
   // Set piece 1: the shelf cascades in book by book at launch. A book mounted later (added, or
   // scrolled into view) springs in on its own, without the stagger.
   const [launching, setLaunching] = useState(true);
@@ -56,7 +56,7 @@ export default function Library() {
         keyExtractor={(b) => b.id}
         numColumns={2}
         columnWrapperStyle={{ gap: GAP, paddingHorizontal: GUTTER }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + UNICORN.padding, gap: 26 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 120, gap: 26 }}
         ListHeaderComponent={
           <Animated.View entering={springIn()} style={styles.header}>
             <Squishy onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>
@@ -100,7 +100,8 @@ export default function Library() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: GUTTER, paddingBottom: 6, alignItems: 'flex-start' },
+  // The unicorn sits top right; the title row stops short of her.
+  header: { paddingLeft: GUTTER, paddingRight: UNICORN.clearance, paddingBottom: 6, alignItems: 'flex-start' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   title: { fontFamily: fonts.display, fontSize: 38, color: colors.text, lineHeight: 44 },
   count: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

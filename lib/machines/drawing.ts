@@ -10,7 +10,6 @@
 
 import { assign, fromPromise, setup } from 'xstate';
 
-import { unicornTouched } from '@/lib/machines/unicorn';
 import { captureError, info, traced } from '@/lib/telemetry';
 
 export type Stroke = { color: string; d: string };
@@ -65,8 +64,7 @@ export const drawingMachine = setup({
     },
     drawing: {
       on: {
-        // A stroke is a touch the root TouchWatcher never sees (the canvas is in a Modal).
-        STROKE: { actions: [assign({ strokes: ({ context, event }) => [...context.strokes, event.stroke] }), () => unicornTouched()] },
+        STROKE: { actions: assign({ strokes: ({ context, event }) => [...context.strokes, event.stroke] }) },
         UNDO: { actions: assign({ strokes: ({ context }) => context.strokes.slice(0, -1) }) },
         SET_COLOR: { actions: assign({ color: ({ event }) => event.color }) },
         DONE: [{ guard: 'hasStrokes', target: 'exporting' }, { target: 'done' }],

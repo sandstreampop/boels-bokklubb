@@ -1,38 +1,35 @@
 import { useSelector } from '@xstate/react';
-import { useEffect } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
 import Animated, {
   Easing,
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Rive, { Fit } from 'rive-react-native';
+import Rive, { Fit, type RiveRef } from 'rive-react-native';
 
 import { Sparkle } from './Sparkle';
 import unicornFile from '../assets/unicorn.riv';
-import { duckUnicorn, startUnicorn, unicorn, unicornTap, type Cue, type HintTarget, type Pose } from '@/lib/machines/unicorn';
+import { startUnicorn, unicorn, unicornTap, type Cue, type Pose } from '@/lib/machines/unicorn';
 import { springs, useSparkle } from '@/lib/motion';
-import { captureError, info } from '@/lib/telemetry';
+import { captureError } from '@/lib/telemetry';
 
-/** The companion's home: bottom left, about 96 pt, on every screen. Screens pad for it. */
+/** The companion's home: top right, about 96 pt, on every screen. Headers keep clear of it. */
 export const UNICORN = {
   size: 96,
-  left: 12,
-  bottom: 8,
-  /** Extra bottom padding for scrolling content so nothing ends up behind the unicorn. */
-  padding: 120,
+  right: 12,
+  top: 4,
+  /** Width a header row leaves free on the right so a title never runs under her. */
+  clearance: 96 + 12 + 8,
 };
 
-const HIDDEN_Y = UNICORN.size + 120;
-const DUCK_Y = UNICORN.size * 0.72;
+const HIDDEN_X = UNICORN.size + 40;
 
 type Props = {
   /**
@@ -48,22 +45,23 @@ type Props = {
 };
 
 /**
- * The unicorn. The Rive loop keeps her breathing; Reanimated does the moments, tricks and idle
- * hints that lib/machines/unicorn.ts decides. This component only renders state and sends TAP.
+ * The unicorn. At rest she is still: the Rive loop only runs while a cue plays. Reanimated does the
+ * launch, the tricks and the moments that lib/machines/unicorn.ts decides. This component only
+ * renders state and sends TAP.
  */
 export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', placement = 'absolute' }: Props) {
   const insets = useSafeAreaInsets();
   const state = useSelector(unicorn, (s) => (typeof s.value === 'string' ? s.value : 'idle'));
   const current = useSelector(unicorn, (s) => s.context.current);
   const activePose = useSelector(unicorn, (s) => s.context.pose);
-  const hint = useSelector(unicorn, (s) => s.context.hint);
   const launched = useSelector(unicorn, (s) => s.context.launched);
   const onStage = activePose === pose;
   const sparkle = useSparkle();
+  const rive = useRef<RiveRef>(null);
 
-  // Starts below the shelf; the launch moment brings her up.
-  const y = useSharedValue(HIDDEN_Y);
-  const x = useSharedValue(0);
+  // Starts off the right edge; the launch moment brings her in.
+  const x = useSharedValue(HIDDEN_X);
+  const y = useSharedValue(0);
   const scale = useSharedValue(1);
   const scaleY = useSharedValue(1);
   const rot = useSharedValue(0);
@@ -72,32 +70,16 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
     startUnicorn();
   }, []);
 
-  // Bridging a native hook to the machine: the keyboard ducks her, as the rules allow.
-  useEffect(() => {
-    if (pose !== 'home') return;
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => duckUnicorn(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => duckUnicorn(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [pose]);
-
   // Where she sits, from the machine's state.
   useEffect(() => {
     if (!onStage || state === 'hidden') {
-      y.set(withTiming(HIDDEN_Y, { duration: 220, easing: Easing.in(Easing.quad) }));
+      x.set(withTiming(HIDDEN_X, { duration: 220, easing: Easing.in(Easing.quad) }));
       return;
     }
-    if (state === 'ducked') {
-      y.set(withSpring(DUCK_Y, springs.swish));
-      return;
-    }
-    if (state === 'idle' || state === 'idleWait') {
-      // Before the launch moment has run she stays below; the moment is what brings her up. A home
-      // instance mounted later (the add-book modal) reads the same flag and comes straight up.
-      if (launched || pose !== 'home') y.set(withSpring(0, springs.swish));
-      x.set(withSpring(0, springs.swish));
+    if (state === 'idle') {
+      // Before the launch moment has run she stays off the edge; the moment is what brings her in.
+      if (launched || pose !== 'home') x.set(withSpring(0, springs.swish));
+      y.set(withSpring(0, springs.swish));
       rot.set(withSpring(0, springs.swish));
       scale.set(withSpring(1, springs.swish));
       scaleY.set(withSpring(1, springs.swish));
@@ -105,64 +87,29 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, onStage, pose, launched]);
 
-  // A cue from the machine: one Reanimated sequence per trick or moment, sized to CUES[name].ms.
+  // A cue from the machine: the Rive loop runs for its length, with one Reanimated sequence per
+  // trick or moment sized to CUES[name].ms. At rest the loop is paused.
   useEffect(() => {
-    if (state !== 'playing' || !current || !onStage) return;
+    if (state !== 'playing' || !current || !onStage) {
+      rive.current?.pause();
+      return;
+    }
+    rive.current?.play();
     runCue(current, { y, x, scale, scaleY, rot, fire: sparkle.fire });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, current, onStage]);
-
-  // Idle hint: a yawn, then a lean toward the useful button. Snaps back when the state changes.
-  // Not while recording: there she only sways, and the lean would stop the sway.
-  useEffect(() => {
-    if (state !== 'idleHint' || !onStage || pose === 'recording') return;
-    scaleY.set(withSequence(withTiming(1.12, { duration: 500, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 300 })));
-    const lean = leanFor(hint);
-    x.set(withDelay(800, withSpring(lean.x, springs.swish)));
-    rot.set(withDelay(800, withSpring(lean.rot, springs.swish)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, hint, onStage]);
-
-  // The recording pose: a slow sway while the mic is open, no sound.
-  useEffect(() => {
-    if (pose !== 'recording' || !onStage) return;
-    rot.set(withRepeat(withSequence(withTiming(-5, { duration: 1400, easing: Easing.inOut(Easing.sin) }), withTiming(5, { duration: 1400, easing: Easing.inOut(Easing.sin) })), -1, true));
-    return () => {
-      cancelAnimation(rot);
-      rot.set(withSpring(0, springs.swish));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pose, onStage]);
-
-  // Writing and drawing: a nod now and then.
-  useEffect(() => {
-    if ((pose !== 'writing' && pose !== 'drawing') || !onStage) return;
-    scaleY.set(withRepeat(withSequence(withDelay(2600, withTiming(0.92, { duration: 160 })), withTiming(1, { duration: 220 })), -1, false));
-    return () => {
-      cancelAnimation(scaleY);
-      scaleY.set(withSpring(1, springs.swish));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pose, onStage]);
 
   const anim = useAnimatedStyle(() => ({
     transform: [{ translateX: x.value }, { translateY: y.value }, { rotate: `${rot.value}deg` }, { scale: scale.value }, { scaleY: scaleY.value }],
   }));
 
-  const canTap = tapEnabled && onStage && state !== 'hidden' && state !== 'ducked';
+  const canTap = tapEnabled && onStage && state !== 'hidden';
   return (
     <Animated.View
       pointerEvents={canTap ? 'box-none' : 'none'}
-      style={[placement === 'absolute' ? [styles.home, { bottom: insets.bottom + UNICORN.bottom }] : styles.inline, anim]}>
+      style={[placement === 'absolute' ? [styles.home, { top: insets.top + UNICORN.top }] : styles.inline, anim]}>
       <Pressable accessibilityRole="image" accessibilityLabel="Enhörningen" onPress={unicornTap} disabled={!canTap} hitSlop={6} style={styles.box}>
-        <Rive
-          source={unicornFile}
-          autoplay
-          fit={Fit.Contain}
-          style={styles.box}
-          onPlay={(animationName) => info('unicorn.rive.play', { animationName })}
-          onError={(err) => captureError('unicorn.rive', err)}
-        />
+        <Rive ref={rive} source={unicornFile} autoplay={false} fit={Fit.Contain} style={styles.box} onError={(err) => captureError('unicorn.rive', err)} />
         <Sparkle burst={sparkle.burst} corner="center" radius={UNICORN.size * 0.7} />
       </Pressable>
     </Animated.View>
@@ -181,8 +128,8 @@ type Values = {
 function runCue(cue: Cue, v: Values) {
   switch (cue.name) {
     case 'launch':
-      // Peeks up from below the shelf, blinks, settles.
-      v.y.set(withSpring(0, { damping: 13, stiffness: 120 }));
+      // Slides in from the right edge, blinks, settles.
+      v.x.set(withSpring(0, { damping: 13, stiffness: 120 }));
       v.scaleY.set(withDelay(700, withSequence(withTiming(0.86, { duration: 90 }), withTiming(1, { duration: 140 }))));
       return;
     case 'saved':
@@ -213,28 +160,15 @@ function runCue(cue: Cue, v: Values) {
       v.rot.set(withSequence(...[-12, 12, -10, 10, -6, 6].map((d) => withTiming(d, { duration: 90 })), withSpring(0, springs.bounce)));
       return;
     case 'roll':
-      v.rot.set(withSequence(withTiming(360, { duration: 900, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 0 })));
-      v.x.set(withSequence(withTiming(48, { duration: 450, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 450, easing: Easing.inOut(Easing.quad) })));
+      // Rolls toward the middle of the screen and back (her home is on the right).
+      v.rot.set(withSequence(withTiming(-360, { duration: 900, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 0 })));
+      v.x.set(withSequence(withTiming(-48, { duration: 450, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 450, easing: Easing.inOut(Easing.quad) })));
       return;
   }
 }
 
-/** The lean of the idle hint: toward the button that matters on this screen. */
-function leanFor(target: HintTarget): { x: number; rot: number } {
-  switch (target) {
-    case 'plus':
-      return { x: 16, rot: 12 };
-    case 'done':
-      return { x: 16, rot: 12 };
-    case 'mic':
-      return { x: 10, rot: -8 };
-    default:
-      return { x: 0, rot: 0 };
-  }
-}
-
 const styles = StyleSheet.create({
-  home: { position: 'absolute', left: UNICORN.left, width: UNICORN.size, height: UNICORN.size, zIndex: 10 },
+  home: { position: 'absolute', right: UNICORN.right, width: UNICORN.size, height: UNICORN.size, zIndex: 10 },
   inline: { width: UNICORN.size, height: UNICORN.size },
   box: { width: UNICORN.size, height: UNICORN.size },
 });

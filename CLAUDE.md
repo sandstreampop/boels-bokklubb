@@ -37,8 +37,10 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 
 Build 7 ("bedazzle", docs/PRD-build-7.md), decided with Viktor:
 
-- A unicorn companion lives bottom left on every screen. It reacts to the app and to taps, never to
-  usage data, and never appears on share cards.
+- A unicorn companion lives top right on every screen. After the launch animation she is at rest
+  and moves only when something happens: a tap (a trick), an entry saved, a book gone rainbow. No
+  idle animation, no hints. She reacts to the app and to taps, never to usage data, and never
+  appears on share cards.
 - Sound is a layer: the app is complete on mute, follows the ring switch, and is silent while the
   mic is open. No music.
 - Motion uses the presets in lib/motion.ts. Three set pieces exist: launch, entry saved, rainbow

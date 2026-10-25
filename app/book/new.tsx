@@ -9,7 +9,6 @@ import { DrawingOverlay } from '@/components/DrawingOverlay';
 import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
-import { UNICORN, Unicorn } from '@/components/Unicorn';
 import { inspect } from '@/lib/machines/inspect';
 import { newBookMachine } from '@/lib/machines/newBook';
 import { useScreen } from '@/lib/screen';
@@ -33,7 +32,7 @@ export default function NewBook() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: Platform.OS === 'ios' ? 18 : insets.top + 12, paddingBottom: insets.bottom + UNICORN.padding },
+          { paddingTop: Platform.OS === 'ios' ? 18 : insets.top + 12, paddingBottom: insets.bottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled">
         <View style={styles.topRow}>
@@ -99,8 +98,6 @@ export default function NewBook() {
           placeholderTextColor={colors.pink}
         />
       </ScrollView>
-      {/* This screen is a native modal over the root, so it brings its own unicorn; the keyboard ducks her. */}
-      <Unicorn />
       <DrawingOverlay visible={state.matches('drawing')} prompt={null} onReroll={() => {}} onDone={(uri) => send({ type: 'DRAWING_DONE', uri })} />
     </KeyboardAvoidingView>
   );

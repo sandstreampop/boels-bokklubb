@@ -26,8 +26,8 @@ file by file, for the session that implements it after build 6 has landed.
 | `docs/CREDITS.md` | Every asset with its licence, and the record of how the sound sources were evaluated. |
 | `package.json` | `rive-react-native` added with `npx expo install`. A native module: build 7 is a TestFlight build. |
 
-Verified on the branch: `npm run typecheck`, `npm run lint`, `npx expo-doctor` (20/20), and a
-Metro export with a throwaway route importing every new module, which bundled the `.riv` and all
+Verified on the branch, before and after rebasing onto main at build 6 slice 6: `npm run typecheck`,
+`npm run lint`, `npx expo-doctor` (20/20), and a Metro export with a throwaway route importing every new module, which bundled the `.riv` and all
 twelve `.m4a` files. Not verified: anything on a phone. No speaker, no simulator in the session.
 
 ## Decisions taken here, and why
@@ -58,42 +58,51 @@ twelve `.m4a` files. Not verified: anything on a phone. No speaker, no simulator
    keeps `SET_` events out of the breadcrumbs; a touch on every screen is not a transition worth
    a row. Cues and hints log as `unicorn.cue` and `unicorn.hint`.
 
-## Wiring left to do, per existing file (after build 6 is on main)
+## Wiring left to do, per existing file (main as of the rebase, build 6 slice 6 and after)
 
 Native build 7 first (`npx expo install` is done; run `npx expo-doctor`, `npm run build:ios`), then
 over the air one update each, in the PRD's order. Every item below is an edit to a file this branch
-did not touch.
+did not touch. Main's shape since build 6: `app.config.ts` replaced `app.json`; writing and drawing
+are `components/WriterOverlay.tsx` and `components/DrawingOverlay.tsx` (Modals, like the
+recorder); share is a button on every card that goes through `lib/machines/share.ts` and the
+root-mounted `components/ShareHost.tsx`; `lib/store.ts` already detects "the moment a book becomes
+complete" and logs `book.completed`.
 
 - `app/_layout.tsx`: call `startSounds()` next to `startTelemetry()`; wrap the `<Stack>` in
-  `<TouchWatcher>`; mount `<Unicorn />` as a sibling after the Stack inside the
-  GestureHandlerRootView; send `unicornMoment('launch')` in the existing `app.ready` effect.
+  `<TouchWatcher>`; mount `<Unicorn />` next to `<ShareHost />` inside the GestureHandlerRootView;
+  send `unicornMoment('launch')` in the existing `app.ready` effect.
 - `app/index.tsx`: `paddingBottom: insets.bottom + UNICORN.padding`; `setUnicornHint('plus')` on
   focus; set piece 1: wrap each BookCard in `<Animated.View entering={springIn(index * durations.cascade)}>`
   on first render only, and the title in `springIn()`.
-- `app/book/[id].tsx`: padding as above; `setUnicornHint('mic')` on focus; after a saved entry
-  (the book machine's `savingText`/`savingAudio` onDone, and the photo and drawing paths): `play('save')`,
-  `unicornMoment('saved')`, `<Sparkle fireKey={newestEntryId} corner="topRight" />` on the newest
-  card (build 6 slice 2 already springs the card in; keep that, replace its burst with Sparkle).
-  Set piece 3: when build 6's "complete book" selector flips for a book not yet celebrated this
-  launch, mount `<RainbowCelebration origin={coverCentre} onDone={unmount} />` over the page with the
-  cover centre from `measureInWindow`, and pass the cover its `celebrating` flag so its ring draws.
+- `app/book/[id].tsx`: padding as above (it is `insets.bottom + 40` today); `setUnicornHint('mic')`
+  on focus; after a saved entry (the book machine's save actors' onDone, text, audio, photo and
+  drawing alike): `play('save')`, `unicornMoment('saved')`, `<Sparkle fireKey={newestEntryId}
+  corner="topRight" />` on the newest card, keeping build 6's spring-in of the card. Set piece 3:
+  turn the store's `book.completed` detection into a store field or an event the page can read
+  (a `celebrate: string | null` in the store context, cleared by the page), mount
+  `<RainbowCelebration origin={coverCentre} onDone={unmount} />` over the page with the cover centre
+  from `measureInWindow`, and pass the existing `RainbowRing` a `celebrating` flag so it draws itself.
 - `components/StarRating.tsx`: `playStar(n)` in `tap`.
 - `components/RoundButton.tsx`: `play('tap')` in `onPress` (the squish is already there).
-- `components/BookCard.tsx`, `components/EntryCard.tsx`, the crayons and the wand: wrap the
-  pressable in `<Squishy>`; the wand passes `sound="wand"`.
-- `components/Prompt.tsx`: `<Animated.View key={prompt} entering={springIn()} exiting={tumble()}>`
-  around the prompt text, so a reroll tumbles the old one and springs the new one in.
-- `components/RecorderOverlay.tsx`: `setUnicornPose('recording')` when it opens and `'home'` when
-  it closes; `micOpen(true)` when the machine enters `recording`, `micOpen(false)` on `done` and
-  `unavailable`; mount `<Unicorn pose="recording" placement="inline" />` beside the timer.
+- `components/BookCard.tsx`, `components/EntryCard.tsx`, the crayons in `DrawingOverlay.tsx`:
+  wrap the pressable in `<Squishy>`; the `Wand` in `components/Prompt.tsx` passes `sound="wand"`.
+  `usePromptSwap` there already tumbles the old prompt and bursts the new one: keep it, or swap its
+  timings for `tumble()` / `springIn()` so the three places share the preset.
+- `components/RecorderOverlay.tsx`: `setUnicornPose('recording')` when it opens and `'home'` in
+  the done and unavailable effects; `micOpen(true)` when `recording` becomes true, `micOpen(false)`
+  in the done and unavailable effects; mount `<Unicorn pose="recording" placement="inline" />`
+  beside the timer.
 - `lib/machines/recorder.ts`: the `stop` actor restores `effectsAudioMode` instead of
   `{ playsInSilentMode: true }`.
-- `components/EntryCard.tsx`: `playsInSilentMode: true` around voice-note playback, then
-  `effectsAudioMode` back (decided, see below).
-- Build 6's writer and canvas: `setUnicornPose('writing' | 'drawing')` on open, `'home'` on close,
-  `setUnicornHint('done')`, `<Unicorn pose=... placement="inline" />` below the text or canvas;
-  `play('crayon')` on stroke start; nothing animates while she types.
-- Build 6's share path: `hideUnicorn()` before the capture and the sheet, `showUnicorn()` after.
+- `components/EntryCard.tsx`: around `player.play()` for a voice note, `setAudioModeAsync({ playsInSilentMode: true })`
+  first and `setAudioModeAsync(effectsAudioMode)` when playback ends or the card unmounts
+  (decided, see below). Build 6's auto-play after recording goes through the same path.
+- `components/WriterOverlay.tsx` and `components/DrawingOverlay.tsx`: `setUnicornPose('writing' | 'drawing')`
+  on open, `'home'` on done, `setUnicornHint('done')`, `<Unicorn pose=... placement="inline" />`
+  below the text or canvas; `play('crayon')` where the pan gesture begins a stroke; nothing animates
+  while she types.
+- `lib/machines/share.ts`: `hideUnicorn()` on entering `rendering`, `showUnicorn()` on returning to
+  `idle`, so neither the capture nor the preview sheet shows her.
 - Screen transitions: `play('screen-in')` / `play('screen-out')` from `useScreen` focus and blur
   is the cheapest place; the Stack's own slide stays, the overshoot comes from `swishIn` on each
   screen's root view.
@@ -109,8 +118,8 @@ did not touch.
   her words always play and the pops and chimes stay quiet on a silent phone. Build 6's auto-play
   after recording goes through the same path.
 - **The fanfare is 1.6 s**, the longest cheerful jingle in Kenney's pack; the PRD says two seconds.
-- **Build 6's `package.json`** will conflict with this branch's on merge (two new native modules
-  there, one here). Resolve by keeping all three and running `npm install` to regenerate the lock.
+- **Merging to main ships.** Since "Shipping moves to CI", a push to main is a release. Merge this
+  branch only when build 7 is meant to go out; the lockfile already holds all three native modules.
 
 ## Risks to watch on the first TestFlight build
 

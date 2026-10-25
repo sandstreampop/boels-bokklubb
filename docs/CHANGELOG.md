@@ -6,6 +6,9 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- The app refuses to start from a bundle that lost its database settings and goes back to the last
+  good one on the next launch, instead of showing "Appen saknar inställningar för databasen".
+
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so

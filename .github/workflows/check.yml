@@ -1,0 +1,34 @@
+# Every push and pull request: the app must typecheck, lint, pass expo-doctor, have a changelog
+# line for any change Boel would see, and bundle with its Supabase config under the EAS production
+# environment. On main this runs as the first job of ship.yml, which ships only when it passes.
+# Secrets: EXPO_TOKEN (for the bundle proof; red until Viktor adds it in Settings → Secrets).
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx expo-doctor
+      - name: Changelog line for every change Boel sees
+        run: node scripts/changelog.mjs check
+      - name: The bundle carries its Supabase config (EAS production environment)
+        run: node scripts/ship.mjs prove
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

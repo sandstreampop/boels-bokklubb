@@ -1,8 +1,16 @@
 # PRD: shipping pipeline (changelog, versions, CI)
 
-To be implemented by a session of its own once build 6 is on the phone, or by the build 6 session
-at its end. Do not implement it in parallel with build 6 on main: it edits the ship script and
-package.json, which that session uses, and it changes who is allowed to ship.
+**Implemented 2026-10-25** (`scripts/ship.mjs`, `scripts/changelog.mjs`, `scripts/asc.mjs`,
+`.github/workflows/check.yml` and `ship.yml`). Differences from the text below, all small:
+`app.json` is `app.config.ts`, so the native trigger and the version live there; the bundle proof
+uses sentinel values in the process environment under `eas env:exec` instead of `EXPO_NO_DOTENV`
+alone, because eas-cli needs the values to evaluate the config at all, and the update publishes
+that very export (`--skip-bundler`); the next build number is read from EAS before the build
+(`build:version:get`, `appVersionSource: remote`) and checked against the build EAS creates, so the
+changelog commit can be made before the build and pushed once EAS confirms the number; the
+changelog gate also requires a `What to test:` line when the diff is native-shaped. Builds 6 and 7
+shipped as 1.0.0 before this landed, so build 8 is 1.1.0. Waiting on Viktor: the eight GitHub
+Actions secrets, which the cloud proxy cannot set.
 
 ## Goal
 

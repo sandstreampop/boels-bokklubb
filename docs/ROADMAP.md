@@ -50,14 +50,18 @@ Principles:
 - Performance budget: nothing that delays a tap on an iPhone 8, and the recording path stays
   untouched by audio effects (no sound while the mic is open).
 
+## Done 2026-10-25: shipping pipeline (docs/PRD-changelog.md)
+
+Push to main ships: an update, or a native build with a new version number and the changelog
+section in TestFlight's "What to Test". A push without its changelog line is refused. Live once
+Viktor has put the eight secrets into GitHub Actions (the cloud proxy blocks setting them).
+
 ## Later: build 8 and beyond (not designed yet)
 
 - Read-only feed for relatives: a web page per family link showing the same cards. Needs a share
   token, a public read path in Supabase, and a small web app. Decided to design the card first so
   the feed is the card.
 - Parent-recorded prompt clips as an optional override of the text prompts.
-- Shipping pipeline in CI (docs/PRD-changelog.md): push to main ships, versions bump, changelog
-  feeds TestFlight. Needs the GitHub Actions secrets Viktor adds by hand (proxy blocks it).
 - Android build, if a relative wants it. The config is already there.
 
 ## Not doing

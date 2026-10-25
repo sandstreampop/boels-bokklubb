@@ -5,8 +5,9 @@ React Native, TypeScript, Expo Router) with Supabase for the database, file stor
 speech-to-text edge function. Distributed to the family through TestFlight internal testing.
 
 Read AGENTS.md for the Expo-specific rules (fetch versioned docs, never trust memory for Expo APIs).
-The plan lives in docs/ROADMAP.md; build specs are docs/PRD-build-6.md then docs/PRD-build-7.md.
-Start there. Telemetry is for finding bugs, never for measuring usage.
+The plan lives in docs/ROADMAP.md; build specs are docs/PRD-build-6.md then docs/PRD-build-7.md,
+and docs/PRD-changelog.md is the shipping pipeline (implemented 2026-10-25: sessions push, CI
+ships). Start there. Telemetry is for finding bugs, never for measuring usage.
 
 ## Product rules, decided with Viktor
 
@@ -58,10 +59,12 @@ in the same fix. The first instance: `app.config.ts` throws without `EXPO_PUBLIC
 `EXPO_PUBLIC_SUPABASE_ANON_KEY`, because `eas update --environment production` ignores the
 committed `.env` and reads EAS environment variables (two updates shipped without them on
 2026-10-25). `scripts/setup.mjs env` keeps `.env` and the EAS variables for production, preview and
-development in step; before publishing, `node scripts/eas.mjs env:exec production "npx expo export
---platform ios"` and a grep for `supabase.co` in `dist/` prove the bundle, and `node scripts/eas.mjs
-env:exec production env | grep EXPO_PUBLIC_SUPABASE_URL` proves EAS holds the value (eas-cli needs
-.env to evaluate the config at all, which is what the wrapper provides).
+development in step. `node scripts/ship.mjs prove` (run by check.yml on every push and by every
+update before publishing) exports under `eas env:exec production` with sentinel values in the
+process environment and refuses unless the real hostname, not the sentinel, is in the bundle; the
+update then publishes exactly that export. And `lib/supabase.ts` throws at load, after writing a
+fatal telemetry event, if a bundle without the values ever reaches a phone, so expo-updates falls
+back to the embedded bundle.
 
 ## Architecture: state machines first
 
@@ -93,8 +96,11 @@ file header comment. Reads from the store go through `useStore(selector)` and th
 - `supabase/migrations` schema and storage policies. `supabase/functions/transcribe` edge function.
 - `app.config.ts` the Expo config (refuses to evaluate without the Supabase values).
 - `scripts/setup.mjs` provisions everything from environment secrets. `scripts/eas-drive.py` answers
-  EAS prompts for the first interactive iOS credential setup.
-- `.github/workflows/testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.
+  EAS prompts for the first interactive iOS credential setup. `scripts/ship.mjs` ships (CI and the
+  escape hatch), `scripts/changelog.mjs` reads and writes docs/CHANGELOG.md, `scripts/asc.mjs` talks
+  to App Store Connect (processing state, "What to Test"), `scripts/eas.mjs` wraps eas-cli.
+- `.github/workflows/check.yml` on every push and PR, `ship.yml` on push to main (see Shipping),
+  `testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.
 
 ## Observability (the testing loop)
 
@@ -107,6 +113,31 @@ then `npm run logs -- --session <id>` for the full trail of that launch. New cod
 screens. Run `npx expo-doctor` before every build: a missing native peer dependency crashes a
 TestFlight build without any JS error.
 
+## Shipping: sessions push, CI ships
+
+A session's job ends at "typecheck, lint, doctor, changelog line, commit, push". A push to main
+runs `.github/workflows/ship.yml`: first `check.yml` (typecheck, lint, expo-doctor, the changelog
+gate, the bundle proof), then `node scripts/ship.mjs auto`, which ships an over-the-air update or,
+when package.json, package-lock.json, app.config.ts, eas.json or a migration changed (or the subject
+says `[native]`), a TestFlight build with migrations applied first. Runs queue, so two sessions can
+no longer publish each other's half-done tree. Sessions do not run `npm run update` or
+`npm run build:ios` unless Viktor asks; they are the manual escape hatch and call the same script.
+
+- Every commit that changes what Boel sees adds a line under `## Unreleased` in docs/CHANGELOG.md,
+  in Viktor's words, one sentence, starting with the change (a fix says what works now), no file
+  or machine names. `check.yml` refuses a push that changes app/, components/, lib/ or assets/
+  without one. A native build also needs one line `What to test: …` first.
+- On ship the Unreleased lines become `### Update <id> (date)` under the current build, or
+  `## x.y.0 (build N, date, TestFlight)` for a native build, committed as `Changelog: …` with
+  `[skip ci]` and pushed. The update message on EAS is the same lines, prefixed with the version.
+- Every native build is a new version: the ship bumps the minor of `version` in app.config.ts
+  (build 8 is 1.1.0; major stays 1 until Viktor says). Never bump it by hand between builds: the
+  runtime version is a fingerprint that includes the config, and a bump in the tree would stop
+  updates reaching the installed build. Updates never change the version.
+- After a native build the ship waits for Apple to process it and writes the section into
+  TestFlight's "What to Test" (scripts/asc.mjs, Swedish locale). Nothing in the app shows a version.
+- `testflight-refresh.yml` is the same native ship monthly, with "Monthly refresh, nothing new".
+
 ## Commands
 
     npm run typecheck   # tsc --noEmit
@@ -114,14 +145,18 @@ TestFlight build without any JS error.
     npm run logs        # tail app telemetry (--since 2h, --level warn, --session <id>, --sessions, --follow)
     npm run migrate     # apply supabase/migrations through the Management API
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)
-    npm run update      # JS-only change over the air to installed builds, about a minute
-    npm run build:ios   # scripts/ship.mjs: EAS build + TestFlight submit, about 25 minutes, native changes only
-    NODE_USE_ENV_PROXY=1 node --no-warnings scripts/eas.mjs …   # any other eas-cli command, with .env loaded
+    node scripts/changelog.mjs check   # what check.yml asks: a changelog line for every change Boel sees
+    npm run update      # manual escape hatch: the over-the-air ship CI would do (refuses without Unreleased lines)
+    npm run build:ios   # manual escape hatch: the native ship (bump, changelog, build, submit, What to Test, 40 min)
+    NODE_USE_ENV_PROXY=1 node --no-warnings scripts/ship.mjs prove   # the bundle proof alone
+    NODE_USE_ENV_PROXY=1 node --no-warnings scripts/asc.mjs builds   # what Apple has, with processing state
+    NODE_USE_ENV_PROXY=1 node --no-warnings scripts/eas.mjs …        # any other eas-cli command, with .env loaded
 
 Do not add npm scripts between native builds: package.json scripts are part of the runtime
 fingerprint, and a changed fingerprint means updates no longer reach the installed build.
 
-Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own.
+Run typecheck and lint before committing. Commit to main and push; the repo is Viktor's own. CI
+ships what was pushed.
 
 ## When Viktor says "keys are in"
 
@@ -133,13 +168,14 @@ State after the 2026-10-25 session: `supabase`, `user`, `env`, `eas` (credential
 submitted) and `testflight` (group "Familjen", Viktor added) are all done. EAS submit reads the app
 id and team id literally from eas.json; only the `ascApiKey*` fields expand `$VAR`.
 
-Still open: `github`. The cloud proxy returns 403 on the GitHub Actions secrets API, so the monthly
-refresh workflow has no secrets until Viktor adds `EXPO_TOKEN`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and
-`ASC_KEY_P8_BASE64` by hand in the repo's Settings → Secrets and variables → Actions (or runs
-`node scripts/setup.mjs github` from a machine where `gh` is logged in).
+Still open: `github`. The cloud proxy returns 403 on the GitHub Actions secrets API, so
+`check.yml`, `ship.yml` and the monthly refresh are red until Viktor adds `EXPO_TOKEN`,
+`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`, `APPLE_TEAM_ID`, `ASC_APP_ID`, `SUPABASE_URL`
+and `SUPABASE_ACCESS_TOKEN` by hand in the repo's Settings → Secrets and variables → Actions (or
+runs `node scripts/setup.mjs github` from a machine where `gh` is logged in). Until then a failed
+Ship run is rerun from the Actions tab once the secrets are in; nothing is lost, the Unreleased
+lines wait.
 
-Shipping: `npm run update` for anything in app/, components/, lib/ or assets (EAS Update, channel
-`production`, runtime version is a fingerprint of the native project). `npm run build:ios` only when
-package.json gains a native module, app.json changes or the SDK moves. Signing is already set up.
-The app checks for an update on every launch and waits up to 3 s for it, so a fix is live on the
-phone after one relaunch; `npm run logs` shows the running update id in the `app` column.
+The app checks for an update on every launch and waits up to 3 s for it, so a shipped update is
+live on the phone after one relaunch; `npm run logs` shows the running update id in the `app`
+column and TestFlight shows version and build on the install screen.

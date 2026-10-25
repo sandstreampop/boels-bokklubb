@@ -1,0 +1,57 @@
+# Push to main ships. After check.yml passes, scripts/ship.mjs auto looks at what changed since
+# the last "Changelog: …" commit: app/, components/, lib/ or assets/ means an over-the-air update;
+# package.json, package-lock.json, app.config.ts, eas.json, a migration or "[native]" in the
+# subject means a TestFlight build (migrations are applied first). It then moves the Unreleased
+# changelog lines into a dated section, commits that with [skip ci] and pushes, and for a native
+# build writes the section to TestFlight's "What to Test" once Apple has processed the build.
+# A push with nothing under Unreleased and no app change ships nothing.
+#
+# Runs queue (concurrency group "ship") so two pushes never publish over each other. Secrets:
+# EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64, APPLE_TEAM_ID, ASC_APP_ID,
+# SUPABASE_URL, SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables → Actions).
+name: Ship
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ship
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+    secrets: inherit
+
+  ship:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Git identity for the changelog commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Ship
+        run: node scripts/ship.mjs auto
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

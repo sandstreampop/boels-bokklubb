@@ -6,7 +6,6 @@ import { Icon } from './Icon';
 import { RainbowBar } from './Rainbow';
 import { RoundButton } from './RoundButton';
 import { AppActor } from '@/lib/machines/app';
-import { isConfigured } from '@/lib/supabase';
 import { colors, fonts, radius } from '@/lib/theme';
 
 /** One field. A grown-up types the family password once per phone. */
@@ -53,11 +52,10 @@ export function Login() {
             textContentType="password"
             returnKeyType="go"
             onSubmitEditing={submit}
-            editable={isConfigured && !busy}
+            editable={!busy}
           />
           <RoundButton icon="send" size={44} onPress={submit} disabled={!canSubmit} label="Logga in" />
         </Animated.View>
-        {!isConfigured && <Text style={styles.hint}>Appen saknar inställningar för databasen.</Text>}
       </View>
     </KeyboardAvoidingView>
   );
@@ -84,5 +82,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   input: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 20, color: colors.text, paddingVertical: 8 },
-  hint: { fontFamily: fonts.body, color: colors.muted, fontSize: 14 },
 });

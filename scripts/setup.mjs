@@ -7,11 +7,12 @@
 // Reads the secrets listed in README.md from the environment. Never prints them.
 
 import { execSync, spawnSync } from 'node:child_process';
-import { createPrivateKey, randomUUID, sign } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { Buffer } from 'node:buffer';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ascToken } from './asc.mjs';
 import { easEnv as withDotenv } from './eas.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
@@ -198,12 +199,13 @@ function env() {
 }
 
 // ------------------------------------------------------------------------------------------------
-// GitHub Actions secrets for the monthly TestFlight refresh
+// GitHub Actions secrets: CI ships (ship.yml), checks the bundle (check.yml) and rebuilds monthly
 // ------------------------------------------------------------------------------------------------
+const GITHUB_SECRETS = ['EXPO_TOKEN', 'ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8_BASE64', 'APPLE_TEAM_ID', 'ASC_APP_ID', 'SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN'];
 function github() {
-  need('EXPO_TOKEN', 'ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8_BASE64', 'APPLE_TEAM_ID', 'ASC_APP_ID');
+  need(...GITHUB_SECRETS);
   log('GitHub: setting Actions secrets');
-  for (const name of ['EXPO_TOKEN', 'ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8_BASE64', 'APPLE_TEAM_ID', 'ASC_APP_ID']) {
+  for (const name of GITHUB_SECRETS) {
     const r = spawnSync('gh', ['secret', 'set', name, '-R', REPO], { input: process.env[name], stdio: ['pipe', 'inherit', 'inherit'] });
     if (r.status !== 0) throw new Error(`gh secret set ${name} failed`);
     ok(name);
@@ -255,17 +257,6 @@ function eas() {
 // ------------------------------------------------------------------------------------------------
 // App Store Connect: internal TestFlight group with the account holder in it
 // ------------------------------------------------------------------------------------------------
-function ascToken() {
-  need('ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8_BASE64');
-  const key = createPrivateKey(Buffer.from(process.env.ASC_KEY_P8_BASE64.trim(), 'base64').toString('utf8'));
-  const now = Math.floor(Date.now() / 1000);
-  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-  const header = b64({ alg: 'ES256', kid: process.env.ASC_KEY_ID, typ: 'JWT' });
-  const payload = b64({ iss: process.env.ASC_ISSUER_ID, iat: now, exp: now + 1200, aud: 'appstoreconnect-v1' });
-  const sig = sign('sha256', Buffer.from(`${header}.${payload}`), { key, dsaEncoding: 'ieee-p1363' }).toString('base64url');
-  return `${header}.${payload}.${sig}`;
-}
-
 async function testflight() {
   need('ASC_APP_ID');
   const base = 'https://api.appstoreconnect.apple.com/v1';

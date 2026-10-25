@@ -13,26 +13,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
-import { File } from 'expo-file-system';
 import * as Updates from 'expo-updates';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
-import { dirs } from './files';
 import { uuid } from './ids';
 import { supabase } from './supabase';
+import { type AppEvent, type Level, markerFile, pendingFile, readJson, writeJson } from './telemetryFiles';
 
-export type Level = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+export type { AppEvent, Level } from './telemetryFiles';
 type Data = Record<string, unknown>;
-
-export type AppEvent = {
-  id: string;
-  at: string;
-  session_id: string;
-  seq: number;
-  level: Level;
-  event: string;
-  data: Data | null;
-};
 
 const LEVEL_RANK: Record<Level, number> = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 };
 const CRUMBS = 40;
@@ -50,33 +39,6 @@ let appState: AppStateStatus = (AppState.currentState as AppStateStatus | null) 
 let flushing = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
-
-// ---- files ---------------------------------------------------------------------------------------
-
-function pendingFile() {
-  return new File(dirs.root(), 'telemetry-pending.json');
-}
-function markerFile() {
-  return new File(dirs.root(), 'launch-marker.json');
-}
-
-function writeJson(f: File, value: unknown) {
-  try {
-    if (!f.exists) f.create();
-    f.writeSync(JSON.stringify(value));
-  } catch {
-    // The file system is the one thing we cannot report through itself.
-  }
-}
-
-function readJson<T>(f: File): T | null {
-  try {
-    if (!f.exists) return null;
-    return JSON.parse(f.textSync()) as T;
-  } catch {
-    return null;
-  }
-}
 
 // ---- context ---------------------------------------------------------------------------------------
 

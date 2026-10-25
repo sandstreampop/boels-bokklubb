@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
@@ -31,9 +32,9 @@ export function StarRating({ value, onChange, size = 44 }: Props) {
 
   const tap = (n: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    burstIndex.value = n - 1;
-    burst.value = 0;
-    burst.value = withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) });
+    burstIndex.set(n - 1);
+    burst.set(0);
+    burst.set(withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) }));
     onChange(n);
   };
 
@@ -60,8 +61,8 @@ type StarProps = {
   filled: boolean;
   size: number;
   onPress: () => void;
-  burst: Animated.SharedValue<number>;
-  burstIndex: Animated.SharedValue<number>;
+  burst: SharedValue<number>;
+  burstIndex: SharedValue<number>;
   delay: number;
 };
 
@@ -70,11 +71,10 @@ function Star({ index, filled, size, onPress, burst, burstIndex, delay }: StarPr
   const fill = useSharedValue(filled ? 1 : 0);
 
   useEffect(() => {
-    fill.value = withDelay(delay, withTiming(filled ? 1 : 0, { duration: 220 }));
+    fill.set(withDelay(delay, withTiming(filled ? 1 : 0, { duration: 220 })));
     if (filled) {
-      scale.value = withDelay(
-        delay,
-        withSequence(withSpring(1.35, { damping: 6, stiffness: 260 }), withSpring(1, { damping: 10 })),
+      scale.set(
+        withDelay(delay, withSequence(withSpring(1.35, { damping: 6, stiffness: 260 }), withSpring(1, { damping: 10 }))),
       );
     }
   }, [filled, delay, fill, scale]);
@@ -124,8 +124,8 @@ function Sparkles({
 }: {
   index: number;
   size: number;
-  burst: Animated.SharedValue<number>;
-  burstIndex: Animated.SharedValue<number>;
+  burst: SharedValue<number>;
+  burstIndex: SharedValue<number>;
 }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -148,8 +148,8 @@ function Spark({
   color: string;
   radius: number;
   index: number;
-  burst: Animated.SharedValue<number>;
-  burstIndex: Animated.SharedValue<number>;
+  burst: SharedValue<number>;
+  burstIndex: SharedValue<number>;
 }) {
   const style = useAnimatedStyle(() => {
     const active = burstIndex.value === index;

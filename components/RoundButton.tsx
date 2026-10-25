@@ -37,10 +37,10 @@ export function RoundButton({
       accessibilityLabel={label}
       disabled={disabled}
       onPressIn={() => {
-        scale.value = withSpring(0.9, { damping: 12, stiffness: 300 });
+        scale.set(withSpring(0.9, { damping: 12, stiffness: 300 }));
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 10, stiffness: 260 });
+        scale.set(withSpring(1, { damping: 10, stiffness: 260 }));
       }}
       onPress={() => {
         if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});

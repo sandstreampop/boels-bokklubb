@@ -1,6 +1,6 @@
 // What Boel can do on a book page: write, photograph, record, rate. One thing at a time.
 //
-//   idle ──SEND_TEXT──▶ savingText ──▶ idle (fresh write prompt)
+//   idle ──START_WRITING──▶ writing ──WRITING_DONE──▶ idle (fresh write prompt; the writer saved)
 //   idle ──OPEN_PHOTOS──▶ choosingPhoto ──PICK──▶ takingPhoto ──▶ idle
 //   idle ──START_RECORDING──▶ recording (fresh speak prompt) ──RECORDING_DONE──▶ savingAudio ──▶ idle
 //   idle ──RATE──▶ idle (rating is queued immediately)
@@ -8,7 +8,7 @@
 
 import { assign, fromPromise, setup } from 'xstate';
 
-import { addAudioEntry, addPhotoEntry, addTextEntry, rateBook } from '@/lib/actions';
+import { addAudioEntry, addPhotoEntry, rateBook } from '@/lib/actions';
 import { pickPhoto } from '@/lib/images';
 import { pickPrompt } from '@/lib/prompts';
 import { captureError, debug } from '@/lib/telemetry';
@@ -16,15 +16,14 @@ import type { PromptPool } from '@/lib/types';
 
 type Input = { bookId: string };
 type Context = Input & {
-  text: string;
   /** The question on the recording overlay. Picked when recording starts. */
   speakPrompt: string | null;
-  /** The question in the composer. Picked when the page opens and after every saved text. */
+  /** The question on the writing screen. Picked when the page opens and after every writing. */
   writePrompt: string;
 };
 type Events =
-  | { type: 'SET_TEXT'; text: string }
-  | { type: 'SEND_TEXT' }
+  | { type: 'START_WRITING' }
+  | { type: 'WRITING_DONE' }
   | { type: 'OPEN_PHOTOS' }
   | { type: 'CLOSE_PHOTOS' }
   | { type: 'PICK'; source: 'camera' | 'library' }
@@ -37,9 +36,6 @@ type Events =
 export const bookMachine = setup({
   types: { context: {} as Context, events: {} as Events, input: {} as Input },
   actors: {
-    saveText: fromPromise(({ input }: { input: { bookId: string; text: string; prompt: string | null } }) =>
-      addTextEntry(input.bookId, input.text, input.prompt),
-    ),
     takePhoto: fromPromise(async ({ input }: { input: { bookId: string; source: 'camera' | 'library' } }) => {
       const uri = await pickPhoto(input.source);
       if (uri) await addPhotoEntry(input.bookId, uri);
@@ -60,14 +56,10 @@ export const bookMachine = setup({
       };
     }),
   },
-  guards: {
-    hasText: ({ context }) => context.text.trim().length > 0,
-  },
 }).createMachine({
   id: 'book',
   context: ({ input }) => ({
     ...input,
-    text: '',
     speakPrompt: null,
     writePrompt: pickPrompt('write'),
   }),
@@ -83,19 +75,13 @@ export const bookMachine = setup({
   states: {
     idle: {
       on: {
-        SET_TEXT: { actions: assign({ text: ({ event }) => event.text }) },
-        SEND_TEXT: { guard: 'hasText', target: 'savingText' },
+        START_WRITING: 'writing',
         OPEN_PHOTOS: 'choosingPhoto',
         START_RECORDING: 'recording',
       },
     },
-    savingText: {
-      invoke: {
-        src: 'saveText',
-        input: ({ context }) => ({ bookId: context.bookId, text: context.text.trim(), prompt: context.writePrompt }),
-        onDone: { target: 'idle', actions: assign({ text: '', writePrompt: () => pickPrompt('write') }) },
-        onError: { target: 'idle', actions: ({ event, context }) => captureError('book.sendText', event.error, { bookId: context.bookId }) },
-      },
+    writing: {
+      on: { WRITING_DONE: { target: 'idle', actions: assign({ writePrompt: () => pickPrompt('write') }) } },
     },
     choosingPhoto: {
       on: { PICK: 'takingPhoto', CLOSE_PHOTOS: 'idle' },

@@ -4,7 +4,23 @@ One section per thing that reached Viktor's phone: a TestFlight build (native) o
 update (JavaScript). Newest first. The build number is what TestFlight shows; the update id is the
 first eight characters of what `npm run logs` shows in the `app` column.
 
+## Unreleased
+
+- Writing is its own full screen, like recording: the pencil opens it with the question at the
+  top, big letters, and a done button. A fill-in question keeps the blank underlined with the
+  cursor already in it.
+
 ## Build 5 (2026-10-25, TestFlight)
+
+### Update 01a173d1 (2026-10-25)
+
+- A recording she just made plays back right away, at the phone's volume.
+- Every new thought, recording or photo bounces in with sparkles.
+
+### Update 01a173ce (2026-10-25)
+
+- A question to answer appears when she records or writes, and the magic wand picks another one.
+  The question is kept with the entry and shown above her words.
 
 What to test: create a book, open it, record, write, photograph, rate. Relaunch once after I say
 an update is out and check the new thing appeared.

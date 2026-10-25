@@ -2,24 +2,15 @@ import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EntryCard } from '@/components/EntryCard';
-import { PromptLine } from '@/components/Prompt';
 import { RainbowFill } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
 import { StarRating } from '@/components/StarRating';
+import { WriterOverlay } from '@/components/WriterOverlay';
 import { bookMachine } from '@/lib/machines/book';
 import { inspect } from '@/lib/machines/inspect';
 import { useMediaUri } from '@/lib/media';
@@ -37,8 +28,9 @@ export default function BookPage() {
   const entries = useStore(selectEntries(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
-  const { text, writePrompt, speakPrompt } = state.context;
+  const { writePrompt, speakPrompt } = state.context;
   const recording = state.matches('recording');
+  const writing = state.matches('writing');
   const photoSheet = state.matches('choosingPhoto');
   useScreen('book', { id, found: !!book });
 
@@ -69,41 +61,15 @@ export default function BookPage() {
             </View>
           </View>
           <StarRating value={book.rating} onChange={(n) => send({ type: 'RATE', rating: n })} size={52} />
-          <View style={styles.composer}>
-            {/* The prompt is the placeholder: it sits over the empty input and the wand swaps it. */}
-            <PromptLine
-              prompt={writePrompt}
-              onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
-              color={colors.pink}
-              wandColor={colors.pink}
-              size={20}
-              textStyle={[styles.placeholder, text.length > 0 && styles.placeholderHidden]}
-              style={styles.promptRow}
-            />
-            <TextInput
-              id="entry-text"
-              style={styles.input}
-              value={text}
-              onChangeText={(t) => send({ type: 'SET_TEXT', text: t })}
-              multiline
-              autoCorrect={false}
-              spellCheck={false}
-              autoCapitalize="none"
-              autoComplete="off"
-              maxLength={4000}
-            />
-            {text.trim().length > 0 && (
-              <RoundButton icon="send" size={48} label="Spara" onPress={() => send({ type: 'SEND_TEXT' })} style={styles.sendBtn} />
-            )}
-          </View>
           <View style={styles.actions}>
-            <RoundButton icon="mic" size={88} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
-            <RoundButton icon="camera" size={88} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
+            <RoundButton icon="mic" size={84} label="Berätta" onPress={() => send({ type: 'START_RECORDING' })} />
+            <RoundButton icon="pencil" size={84} color={colors.pink} label="Skriv" onPress={() => send({ type: 'START_WRITING' })} />
+            <RoundButton icon="camera" size={84} color={colors.pink} label="Fota" onPress={() => send({ type: 'OPEN_PHOTOS' })} />
           </View>
         </View>
       ) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [book, cover, text, writePrompt],
+    [book, cover],
   );
 
   if (!book || !id) {
@@ -112,7 +78,7 @@ export default function BookPage() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <View style={styles.root}>
       <FlatList
         data={entries}
         keyExtractor={(e) => e.id}
@@ -123,7 +89,6 @@ export default function BookPage() {
           gap: 14,
         }}
         ListHeaderComponent={header ?? undefined}
-        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => <EntryCard entry={item} />}
       />
       <RoundButton
@@ -146,6 +111,14 @@ export default function BookPage() {
         onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'speak' })}
       />
 
+      <WriterOverlay
+        bookId={id}
+        visible={writing}
+        prompt={writePrompt}
+        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
+        onDone={() => send({ type: 'WRITING_DONE' })}
+      />
+
       {photoSheet && (
         <Pressable style={styles.sheetBackdrop} onPress={() => send({ type: 'CLOSE_PHOTOS' })} accessibilityLabel="Stäng">
           <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
@@ -154,7 +127,7 @@ export default function BookPage() {
           </View>
         </Pressable>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -179,23 +152,7 @@ const styles = StyleSheet.create({
   titleBlock: { flex: 1, minWidth: 0, gap: 4, paddingBottom: 6 },
   title: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32, color: colors.text },
   author: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.muted },
-  composer: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: 16,
-    paddingRight: 64,
-    minHeight: 110,
-    shadowColor: '#E9679B',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-  },
-  input: { fontFamily: fonts.body, fontSize: 20, lineHeight: 28, color: colors.text, minHeight: 60, textAlignVertical: 'top' },
-  promptRow: { position: 'absolute', left: 16, right: 8, top: 10, zIndex: 1 },
-  placeholder: { fontFamily: fonts.body, paddingTop: 4 },
-  placeholderHidden: { opacity: 0 },
-  sendBtn: { position: 'absolute', right: 10, bottom: 10 },
-  actions: { flexDirection: 'row', justifyContent: 'center', gap: 28, paddingVertical: 4 },
+  actions: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingVertical: 4 },
   back: { position: 'absolute', left: 20 },
   sheetBackdrop: {
     position: 'absolute',

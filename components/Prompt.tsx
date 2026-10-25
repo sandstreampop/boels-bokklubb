@@ -33,7 +33,8 @@ type Props = {
  * A prompt with its magic wand. When the prompt changes the old one shrinks and tumbles away, the
  * new one springs in, and sparks fly from the wand tip. The wand itself only asks for a reroll.
  */
-export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, align = 'left', style, textStyle }: Props) {
+/** The swap animation: the old prompt tumbles away, the new one springs in, the wand sparks. */
+export function usePromptSwap(prompt: string) {
   // The prompt that was on screen before this one, kept so it can tumble away. Adjusted during
   // render when the prop changes (the React pattern for state that follows a prop).
   const [shown, setShown] = useState(prompt);
@@ -70,6 +71,11 @@ export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, alig
       { scale: 1 - 0.7 * leave.value },
     ],
   }));
+  return { shown, leaving, enterStyle, leaveStyle, burst };
+}
+
+export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, align = 'left', style, textStyle }: Props) {
+  const { shown, leaving, enterStyle, leaveStyle, burst } = usePromptSwap(prompt);
 
   const text = [styles.text, { color, fontSize: size, lineHeight: Math.round(size * 1.2), textAlign: align }, textStyle];
 
@@ -88,7 +94,7 @@ export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, alig
   );
 }
 
-function Wand({ color, burst, onPress }: { color: string; burst: SharedValue<number>; onPress: () => void }) {
+export function Wand({ color, burst, onPress }: { color: string; burst: SharedValue<number>; onPress: () => void }) {
   const scale = useSharedValue(1);
   const squish = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }, { rotate: `${(1 - scale.value) * -60}deg` }] }));
   return (

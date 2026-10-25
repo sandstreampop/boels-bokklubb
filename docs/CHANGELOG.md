@@ -13,6 +13,10 @@ first eight characters of what `npm run logs` shows in the `app` column.
   wand, a scratch when a crayon stroke starts, a swish when a screen comes and goes. They follow
   the ring switch and stay quiet while the mic is open. Her own recordings always play, ring
   switch or not. Every cover, card button, star and crayon squishes when pressed.
+- Three set pieces. Opening the app: the shelf cascades in book by book, the title springs, the
+  unicorn peeks up. Saving anything: the card springs in with sparkles, a chime, and the unicorn
+  hops. A book going rainbow: a rainbow sweeps out from the cover, stars rain, a fanfare plays,
+  the unicorn jumps and the ring draws itself around the cover. Once per book.
 
 ## Build 7 (2026-10-25, TestFlight)
 

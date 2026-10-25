@@ -10,15 +10,18 @@ import { Squishy } from './Squishy';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
 import { startShare } from '@/lib/machines/share';
+import { unicornMoment } from '@/lib/machines/unicorn';
+import { durations, springs } from '@/lib/motion';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
-import { effectsAudioMode, voiceAudioMode } from '@/lib/sounds';
+import { effectsAudioMode, play, voiceAudioMode } from '@/lib/sounds';
 import { takeFresh } from '@/lib/store';
 import { captureError, debug } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
 import type { Entry } from '@/lib/types';
 
 export function EntryCard({ entry }: { entry: Entry }) {
-  // Taken once, on first render: a fresh entry bounces in with sparks, and a fresh recording plays.
+  // Taken once, on first render: a fresh entry is set piece 2. The card springs in with sparks at
+  // its corner, the save chime plays, the unicorn hops and trills, and a fresh recording plays.
   const [fresh] = useState(() => takeFresh(entry.id));
   const scale = useSharedValue(fresh ? 0.6 : 1);
   const burst = useSharedValue(0);
@@ -27,8 +30,10 @@ export function EntryCard({ entry }: { entry: Entry }) {
   useEffect(() => {
     if (!fresh) return;
     debug('entry.appear', { id: entry.id, kind: entry.kind });
-    scale.set(withSpring(1, { damping: 9, stiffness: 190, mass: 0.9 }));
-    burst.set(withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }));
+    scale.set(withSpring(1, springs.in));
+    burst.set(withTiming(1, { duration: durations.sparkle, easing: Easing.out(Easing.cubic) }));
+    play('save');
+    unicornMoment('saved');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh]);
 

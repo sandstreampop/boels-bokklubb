@@ -22,6 +22,8 @@ export type StoreContext = {
   /** Index of the prompt shown last, per pool, so the next pick is never the same one. */
   lastPrompt: Partial<Record<PromptPool, number>>;
   loaded: boolean;
+  /** A book that just became complete and has not had its rainbow celebration yet. Not persisted. */
+  celebrate: string | null;
 };
 
 const KEY = 'bokklubb.state.v1';
@@ -33,7 +35,7 @@ export const sortEntries = (entries: Entry[]) => [...entries].sort((a, b) => (a.
 export const NO_ENTRIES: Entry[] = [];
 
 export const store = createStore({
-  context: { books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: false } as StoreContext,
+  context: { books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: false, celebrate: null } as StoreContext,
   on: {
     hydrate: (
       ctx,
@@ -84,7 +86,10 @@ export const store = createStore({
       ...ctx,
       lastPrompt: { ...ctx.lastPrompt, [e.pool]: e.index },
     }),
-    clear: () => ({ books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: true }),
+    /** The moment a book becomes complete: the book page celebrates it once, then clears it. */
+    celebrate: (ctx, e: { bookId: string }) => ({ ...ctx, celebrate: e.bookId }),
+    celebrated: (ctx) => ({ ...ctx, celebrate: null }),
+    clear: () => ({ books: [], entries: {}, localMedia: {}, lastPrompt: {}, loaded: true, celebrate: null }),
   },
 });
 
@@ -154,6 +159,7 @@ export const rememberPrompt = (pool: PromptPool, index: number) => store.trigger
 
 // ---- the moment a book becomes complete ------------------------------------------------------------
 
+/** Books that were already complete when the cache loaded, plus every one celebrated since. */
 let completed: Set<string> | null = null;
 store.subscribe((snap) => {
   if (!snap.context.loaded) return;
@@ -166,9 +172,14 @@ store.subscribe((snap) => {
     if (!completed.has(id)) {
       completed.add(id);
       debug('book.completed', { bookId: id });
+      // Set piece 3 (components/RainbowCelebration.tsx), once per book. Triggered a tick later: a
+      // store event from inside a subscriber would re-enter the store.
+      queueMicrotask(() => store.trigger.celebrate({ bookId: id }));
     }
   }
 });
+export const selectCelebrate = (id: string | undefined) => (s: StoreContext) => !!id && s.celebrate === id;
+export const celebrated = () => store.trigger.celebrated();
 
 // ---- persistence -----------------------------------------------------------------------------------
 
@@ -183,7 +194,7 @@ store.subscribe((snap) => {
 
 async function persist(ctx: StoreContext) {
   try {
-    const { loaded: _loaded, ...rest } = ctx;
+    const { loaded: _loaded, celebrate: _celebrate, ...rest } = ctx;
     await AsyncStorage.setItem(KEY, JSON.stringify(rest));
     lastPersisted = ctx;
   } catch (err) {

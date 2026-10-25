@@ -1,7 +1,7 @@
 import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawingOverlay } from '@/components/DrawingOverlay';
 import { EntryCard } from '@/components/EntryCard';
 import { RainbowFill, RainbowRing } from '@/components/Rainbow';
+import { RainbowCelebration } from '@/components/RainbowCelebration';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
@@ -20,7 +21,7 @@ import { inspect } from '@/lib/machines/inspect';
 import { useMediaUri } from '@/lib/media';
 import { swishIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
-import { selectBook, selectComplete, selectEntries, useStore } from '@/lib/store';
+import { celebrated, selectBook, selectCelebrate, selectComplete, selectEntries, useStore } from '@/lib/store';
 import { pullEntries } from '@/lib/sync';
 import { warn } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
@@ -35,6 +36,7 @@ export default function BookPage() {
   const book = useStore(selectBook(id));
   const entries = useStore(selectEntries(id));
   const complete = useStore(selectComplete(id));
+  const celebrate = useStore(selectCelebrate(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
   const { writePrompt, speakPrompt, drawPrompt } = state.context;
@@ -50,6 +52,22 @@ export default function BookPage() {
     }, [id]),
   );
 
+  // Set piece 3: the book just went rainbow. The sweep starts at the centre of the cover, measured
+  // in the window (the page fills it), with the cover's resting place as the fallback.
+  const coverRef = useRef<ComponentRef<typeof View>>(null);
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!celebrate) return;
+    const fallback = { x: 20 + COVER_W / 2, y: insets.top + 8 + 52 + COVER_H / 2 };
+    const node = coverRef.current;
+    if (!node) {
+      setOrigin(fallback);
+      return;
+    }
+    node.measureInWindow((x, y, w, h) => setOrigin(w > 0 && h > 0 ? { x: x + w / 2, y: y + h / 2 } : fallback));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [celebrate]);
+
   const header = useMemo(
     () =>
       book ? (
@@ -61,8 +79,8 @@ export default function BookPage() {
               onPress={() => send({ type: 'DRAW_COVER' })}
               accessibilityRole="button"
               accessibilityLabel="Rita omslaget">
-              {complete && <RainbowRing width={COVER_W} height={COVER_H} radius={radius.md} />}
-              <View style={styles.cover}>
+              {complete && <RainbowRing width={COVER_W} height={COVER_H} radius={radius.md} draw={celebrate} />}
+              <View ref={coverRef} collapsable={false} style={styles.cover}>
                 {cover ? (
                 <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
                 ) : (
@@ -88,7 +106,7 @@ export default function BookPage() {
         </View>
       ) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [book, cover, complete],
+    [book, cover, complete, celebrate],
   );
 
   if (!book || !id) {
@@ -146,6 +164,16 @@ export default function BookPage() {
         onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
         onDone={() => send({ type: 'WRITING_DONE' })}
       />
+
+      {origin && (
+        <RainbowCelebration
+          origin={origin}
+          onDone={() => {
+            setOrigin(null);
+            celebrated();
+          }}
+        />
+      )}
     </Animated.View>
   );
 }

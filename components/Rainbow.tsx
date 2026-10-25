@@ -1,15 +1,47 @@
+import { useEffect } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { rainbow } from '@/lib/theme';
+
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+/** How long the ring takes to draw itself around a cover that just went rainbow. */
+export const RING_DRAW_MS = 1100;
 
 /**
  * The rainbow ring a complete book earns: a gradient border drawn just outside a cover. Place it
  * absolutely over a wrapper the size of the cover; it draws `stroke` points outside that box.
  */
-export function RainbowRing({ width, height, radius, stroke = 4, style }: { width: number; height: number; radius: number; stroke?: number; style?: StyleProp<ViewStyle> }) {
+export function RainbowRing({
+  width,
+  height,
+  radius,
+  stroke = 4,
+  style,
+  draw = false,
+}: {
+  width: number;
+  height: number;
+  radius: number;
+  stroke?: number;
+  style?: StyleProp<ViewStyle>;
+  /** Set piece 3: when this turns true the ring draws itself around the cover instead of just being there. */
+  draw?: boolean;
+}) {
   const w = width + stroke * 2;
   const h = height + stroke * 2;
+  // The dash trick: one dash as long as the whole outline, offset all the way, then run to zero.
+  const r = radius + stroke / 2;
+  const perimeter = 2 * (w - stroke + (h - stroke)) - (8 - 2 * Math.PI) * r;
+  const drawn = useSharedValue(draw ? 0 : 1);
+  useEffect(() => {
+    if (!draw) return;
+    drawn.set(0);
+    drawn.set(withTiming(1, { duration: RING_DRAW_MS, easing: Easing.inOut(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draw]);
+  const dash = useAnimatedProps(() => ({ strokeDashoffset: perimeter * (1 - drawn.value) }));
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', left: -stroke, top: -stroke, width: w, height: h }, style]}>
       <Svg width={w} height={h}>
@@ -20,7 +52,19 @@ export function RainbowRing({ width, height, radius, stroke = 4, style }: { widt
             ))}
           </LinearGradient>
         </Defs>
-        <Rect x={stroke / 2} y={stroke / 2} width={w - stroke} height={h - stroke} rx={radius + stroke / 2} stroke="url(#ring)" strokeWidth={stroke} fill="none" />
+        <AnimatedRect
+          x={stroke / 2}
+          y={stroke / 2}
+          width={w - stroke}
+          height={h - stroke}
+          rx={r}
+          stroke="url(#ring)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={[perimeter, perimeter]}
+          animatedProps={dash}
+          fill="none"
+        />
       </Svg>
     </View>
   );

@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BookCard } from '@/components/BookCard';
@@ -8,6 +9,7 @@ import { RainbowBar, RainbowRing } from '@/components/Rainbow';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
 import { UNICORN } from '@/components/Unicorn';
+import { durations, springIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { selectCompleteCount, useStore } from '@/lib/store';
 import { pullAllEntries, pullBooks } from '@/lib/sync';
@@ -25,6 +27,14 @@ export default function Library() {
   const [refreshing, setRefreshing] = useState(false);
   const cardWidth = Math.floor((Math.min(width, 700) - GUTTER * 2 - GAP) / 2);
   useScreen('library', { books: books.length });
+  // Set piece 1: the shelf cascades in book by book at launch. A book mounted later (added, or
+  // scrolled into view) springs in on its own, without the stagger.
+  const [launching, setLaunching] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setLaunching(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  const cascade = (index: number) => (launching ? Math.min(index, 14) * durations.cascade : 0);
 
   useFocusEffect(
     useCallback(() => {
@@ -48,7 +58,7 @@ export default function Library() {
         columnWrapperStyle={{ gap: GAP, paddingHorizontal: GUTTER }}
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + UNICORN.padding, gap: 26 }}
         ListHeaderComponent={
-          <View style={styles.header}>
+          <Animated.View entering={springIn()} style={styles.header}>
             <Squishy onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>
               <Text style={styles.title}>Boels bokklubb</Text>
               {rainbowCount > 0 && (
@@ -59,7 +69,7 @@ export default function Library() {
               )}
             </Squishy>
             <RainbowBar style={{ width: 120, marginTop: 6 }} />
-          </View>
+          </Animated.View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -67,12 +77,14 @@ export default function Library() {
           </View>
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.pinkDeep} />}
-        renderItem={({ item }) => (
-          <BookCard
-            book={item}
-            width={cardWidth}
-            onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.id } })}
-          />
+        renderItem={({ item, index }) => (
+          <Animated.View entering={springIn(cascade(index))}>
+            <BookCard
+              book={item}
+              width={cardWidth}
+              onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.id } })}
+            />
+          </Animated.View>
         )}
       />
       <RoundButton

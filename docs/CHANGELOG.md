@@ -6,6 +6,10 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- The unicorn is on stage: she peeks up bottom left when the app opens and lives there on every
+  screen. Tap her for a trick (spin, jump, sneeze, wiggle, roll over), never the same twice in a
+  row. She steps off while a card is being shared and ducks when the keyboard is up.
+
 ## Build 7 (2026-10-25, TestFlight)
 
 What to test: nothing new to see yet. This build carries the unicorn's engine and the sounds so

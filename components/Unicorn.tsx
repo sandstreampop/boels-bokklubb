@@ -1,5 +1,5 @@
 import { useSelector } from '@xstate/react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet } from 'react-native';
 import Animated, {
   Easing,
@@ -57,6 +57,7 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
   const current = useSelector(unicorn, (s) => s.context.current);
   const activePose = useSelector(unicorn, (s) => s.context.pose);
   const hint = useSelector(unicorn, (s) => s.context.hint);
+  const launched = useSelector(unicorn, (s) => s.context.launched);
   const onStage = activePose === pose;
   const sparkle = useSparkle();
 
@@ -66,7 +67,6 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
   const scale = useSharedValue(1);
   const scaleY = useSharedValue(1);
   const rot = useSharedValue(0);
-  const launched = useRef(false);
 
   useEffect(() => {
     startUnicorn();
@@ -94,20 +94,21 @@ export function Unicorn({ pose = 'home', tapEnabled = pose !== 'recording', plac
       return;
     }
     if (state === 'idle' || state === 'idleWait') {
-      // Before the launch moment has run she stays below; the moment is what brings her up.
-      if (launched.current || pose !== 'home') y.set(withSpring(0, springs.swish));
+      // Before the launch moment has run she stays below; the moment is what brings her up. A home
+      // instance mounted later (the add-book modal) reads the same flag and comes straight up.
+      if (launched || pose !== 'home') y.set(withSpring(0, springs.swish));
       x.set(withSpring(0, springs.swish));
       rot.set(withSpring(0, springs.swish));
       scale.set(withSpring(1, springs.swish));
       scaleY.set(withSpring(1, springs.swish));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, onStage, pose]);
+  }, [state, onStage, pose, launched]);
 
   // A cue from the machine: one Reanimated sequence per trick or moment, sized to CUES[name].ms.
   useEffect(() => {
     if (state !== 'playing' || !current || !onStage) return;
-    runCue(current, { y, x, scale, scaleY, rot, fire: sparkle.fire, launched });
+    runCue(current, { y, x, scale, scaleY, rot, fire: sparkle.fire });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, current, onStage]);
 
@@ -174,14 +175,12 @@ type Values = {
   scaleY: SharedValue<number>;
   rot: SharedValue<number>;
   fire: () => void;
-  launched: React.MutableRefObject<boolean>;
 };
 
 function runCue(cue: Cue, v: Values) {
   switch (cue.name) {
     case 'launch':
       // Peeks up from below the shelf, blinks, settles.
-      v.launched.current = true;
       v.y.set(withSpring(0, { damping: 13, stiffness: 120 }));
       v.scaleY.set(withDelay(700, withSequence(withTiming(0.86, { duration: 90 }), withTiming(1, { duration: 140 }))));
       return;

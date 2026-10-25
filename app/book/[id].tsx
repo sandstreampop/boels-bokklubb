@@ -11,6 +11,7 @@ import { RainbowFill, RainbowRing } from '@/components/Rainbow';
 import { RecorderOverlay } from '@/components/RecorderOverlay';
 import { RoundButton } from '@/components/RoundButton';
 import { StarRating } from '@/components/StarRating';
+import { UNICORN } from '@/components/Unicorn';
 import { WriterOverlay } from '@/components/WriterOverlay';
 import { bookMachine } from '@/lib/machines/book';
 import { inspect } from '@/lib/machines/inspect';
@@ -99,7 +100,7 @@ export default function BookPage() {
         keyExtractor={(e) => e.id}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: insets.bottom + UNICORN.padding,
           paddingHorizontal: 20,
           gap: 14,
         }}

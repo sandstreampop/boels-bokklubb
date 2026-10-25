@@ -55,6 +55,8 @@ type Context = {
   lastTrick: TrickName | null;
   pose: Pose;
   hint: HintTarget;
+  /** The launch moment has played: until then every home instance stays below the shelf. */
+  launched: boolean;
 };
 type Events =
   | { type: 'TAP' }
@@ -94,7 +96,7 @@ export const unicornMachine = setup({
     }),
     startNext: assign(({ context }) => {
       const [next, ...rest] = context.queue;
-      return { current: next ?? null, queue: rest };
+      return { current: next ?? null, queue: rest, launched: context.launched || next?.name === 'launch' };
     }),
     cueSound: ({ context }) => {
       const cue = context.current;
@@ -113,7 +115,7 @@ export const unicornMachine = setup({
   },
 }).createMachine({
   id: 'unicorn',
-  context: { queue: [], current: null, lastTrick: null, pose: 'home', hint: null },
+  context: { queue: [], current: null, lastTrick: null, pose: 'home', hint: null, launched: false },
   initial: 'idle',
   on: {
     HIDE: '.hidden',

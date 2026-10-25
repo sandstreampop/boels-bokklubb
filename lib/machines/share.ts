@@ -13,6 +13,7 @@ import * as Sharing from 'expo-sharing';
 import { assign, createActor, fromPromise, setup } from 'xstate';
 
 import { inspect } from './inspect';
+import { hideUnicorn, showUnicorn } from './unicorn';
 import { deleteFile } from '@/lib/files';
 import { captureError, info, traced, warn } from '@/lib/telemetry';
 
@@ -43,11 +44,12 @@ export const shareMachine = setup({
   initial: 'idle',
   states: {
     idle: {
-      entry: [({ context }) => context.uri && deleteFile(context.uri), assign({ target: null, capture: null, uri: null })],
+      // The unicorn is never on a card or in the preview; she comes back when the sheet is gone.
+      entry: [({ context }) => context.uri && deleteFile(context.uri), assign({ target: null, capture: null, uri: null }), () => showUnicorn()],
       on: { SHARE: { target: 'rendering', actions: assign({ target: ({ event }) => event.target }) } },
     },
     rendering: {
-      entry: ({ context }) => info('share.open', { kind: context.target?.kind }),
+      entry: [({ context }) => info('share.open', { kind: context.target?.kind }), () => hideUnicorn()],
       on: { READY: { target: 'capturing', actions: assign({ capture: ({ event }) => event.capture }) } },
       after: { 5000: { target: 'idle', actions: ({ context }) => warn('share.render.timeout', { kind: context.target?.kind }) } },
     },

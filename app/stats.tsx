@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoundButton } from '@/components/RoundButton';
 import { StatTiles } from '@/components/StatTiles';
+import { UNICORN } from '@/components/Unicorn';
 import { startShare } from '@/lib/machines/share';
 import { useScreen } from '@/lib/screen';
 import { selectStats, useStore } from '@/lib/store';
@@ -18,7 +19,7 @@ export default function StatsScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 40 }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + UNICORN.padding }]}>
         <StatTiles stats={stats} />
       </ScrollView>
       <RoundButton

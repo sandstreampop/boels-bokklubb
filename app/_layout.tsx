@@ -12,13 +12,18 @@ import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold } from '@expo-goo
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Login } from '@/components/Login';
 import { ShareHost } from '@/components/ShareHost';
+import { TouchWatcher } from '@/components/TouchWatcher';
+import { Unicorn } from '@/components/Unicorn';
 import { AppActor } from '@/lib/machines/app';
+import { unicornMoment } from '@/lib/machines/unicorn';
+import { startSounds } from '@/lib/sounds';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { info, startTelemetry } from '@/lib/telemetry';
 import { colors } from '@/lib/theme';
 
 startTelemetry();
+startSounds();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
@@ -55,6 +60,12 @@ function Root() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
+  // Set piece 1 begins: the unicorn peeks up once the signed-in screens are on stage (after a
+  // login, that is the moment the family password goes through).
+  useEffect(() => {
+    if (ready && signedIn) unicornMoment('launch');
+  }, [ready, signedIn]);
+
   if (!ready) return null;
 
   return (
@@ -64,17 +75,20 @@ function Root() {
         <ErrorBoundary>
           {signedIn ? (
             <>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.bg },
-                  animation: 'slide_from_right',
-                }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-                <Stack.Screen name="book/[id]" />
-                <Stack.Screen name="stats" />
-              </Stack>
+              <TouchWatcher>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.bg },
+                    animation: 'slide_from_right',
+                  }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="book/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                  <Stack.Screen name="book/[id]" />
+                  <Stack.Screen name="stats" />
+                </Stack>
+              </TouchWatcher>
+              <Unicorn />
               <ShareHost />
             </>
           ) : (

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCard } from '@/components/BookCard';
 import { RainbowBar, RainbowRing } from '@/components/Rainbow';
 import { RoundButton } from '@/components/RoundButton';
+import { UNICORN } from '@/components/Unicorn';
 import { useScreen } from '@/lib/screen';
 import { selectCompleteCount, useStore } from '@/lib/store';
 import { pullAllEntries, pullBooks } from '@/lib/sync';
@@ -44,7 +45,7 @@ export default function Library() {
         keyExtractor={(b) => b.id}
         numColumns={2}
         columnWrapperStyle={{ gap: GAP, paddingHorizontal: GUTTER }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 120, gap: 26 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + UNICORN.padding, gap: 26 }}
         ListHeaderComponent={
           <View style={styles.header}>
             <Pressable onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>

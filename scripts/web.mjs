@@ -348,6 +348,27 @@ async function check() {
   });
 
   await open({
+    name: 'the title opens the stats: six tiles, rainbow books big, back to the shelf',
+    ...phone,
+    storage: { 'bokklubb.pass': stored.pass ?? '', 'bokklubb.pass.expires': String(Date.now() + 86400e3), 'bokklubb.token': fixture.token },
+    steps: async (page, { expect }) => {
+      await page.waitForSelector('.library .grid .book');
+      await page.click('.title-row');
+      await page.waitForSelector('.stats-page .tile');
+      expect((await count(page, '.tile')) === 6, 'six tiles');
+      const st = fixture.library.stats;
+      for (const key of ['rainbow', 'books', 'audio', 'text', 'photo', 'drawing']) {
+        expect((await page.textContent(`.tile[data-key="${key}"] .number`)) === String(st[key]), `${key} is ${st[key]}`);
+      }
+      expect((await page.getAttribute('.tile.big', 'data-key')) === 'rainbow', 'rainbow books is the big one');
+      expect((await count(page, '.tile.big .ring-icon')) === 1, 'with the ring');
+      expect((await count(page, '.share')) === 0, 'no share button');
+      await page.click('.back');
+      await page.waitForSelector('.library .grid .book');
+    },
+  });
+
+  await open({
     name: 'a book link that is not there goes back to the shelf',
     ...phone,
     hash: '#/book/99999999-9999-4999-8999-999999999999',

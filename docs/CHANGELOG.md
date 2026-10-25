@@ -6,6 +6,9 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- The totals are on the web: tap the title for the six tiles, rainbow books big, then books,
+  recordings, thoughts, photos and drawings.
+
 ## 1.1.0 (build 8, 2026-10-25, TestFlight)
 
 What to test: inget nytt i appen; öppna webblänken på telefonen.

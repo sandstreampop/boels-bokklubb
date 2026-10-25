@@ -12,6 +12,7 @@ import { FeedError, getPass, getToken, rememberToken } from './api';
 import { renderBook } from './book';
 import { renderLibrary } from './library';
 import { renderPin, renderTitleOnly } from './pin';
+import { renderStats } from './stats';
 import { captureError, crumb, startTelemetry } from './telemetry';
 
 type Route = { screen: 'library' } | { screen: 'book'; id: string } | { screen: 'stats' };
@@ -64,12 +65,11 @@ async function render() {
     show(token ? 'pin' : 'title', token ? renderPin(token, () => void render()) : renderTitleOnly());
     return;
   }
-  // The stats ship next; until then that route shows the library.
-  const key = route.screen === 'book' ? `book:${route.id}` : 'library';
+  const key = route.screen === 'book' ? `book:${route.id}` : route.screen;
   if (shown === key) return;
   crumb('route', route);
   try {
-    show(key, route.screen === 'book' ? await renderBook(route.id) : await renderLibrary());
+    show(key, route.screen === 'book' ? await renderBook(route.id) : route.screen === 'stats' ? await renderStats() : await renderLibrary());
   } catch (err) {
     if (err instanceof FeedError && err.status === 401) {
       // The pass is gone (expired, or the secrets were rotated): the PIN screen again.

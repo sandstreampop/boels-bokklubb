@@ -6,6 +6,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+## 1.2.0 (build 9, 2026-10-26, TestFlight)
+
 What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan
 liggande; lägg till en bok och sätt stjärnor i sista steget; byt fråga med trollstaven, skriv en
 bokstav och se att staven slocknar. På telefonen ska inget se annorlunda ut.

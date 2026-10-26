@@ -8,7 +8,7 @@
 //
 // It also prints the tablet grid for the iPad sizes, so a change there is visible in the log.
 
-import { canvasSide, gridFor, layoutFor, sizeClass } from '../lib/layout.ts';
+import { canvasSide, gridFor, layoutFor, sheetKeyboardOffset, sizeClass } from '../lib/layout.ts';
 
 let failures = 0;
 function expect(cond, what) {
@@ -33,6 +33,15 @@ for (let width = 320; width < 600; width++) {
   const oldSide = Math.floor(Math.min(width - 32, height * 0.5));
   expect(canvasSide(width, height, { vertical: 999, horizontal: 999 }) === oldSide, `${width}: canvas`);
 }
+
+// ---- the add-book sheet's keyboard offset ---------------------------------------------------------
+
+// An iPhone 15 window is 852 points tall and its page sheet lays out 797: the gap is 55. Before
+// layout the height is 0, which must give no offset; a tablet never gets one.
+expect(sheetKeyboardOffset(852, 797, true) === 55, 'phone sheet offset');
+expect(sheetKeyboardOffset(852, 0, true) === 0, 'no offset before layout');
+expect(sheetKeyboardOffset(852, 900, true) === 0, 'never negative');
+expect(sheetKeyboardOffset(1180, 620, false) === 0, 'no offset on a tablet');
 
 // ---- the tablets, for the log --------------------------------------------------------------------
 

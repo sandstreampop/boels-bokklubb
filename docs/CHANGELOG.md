@@ -6,6 +6,9 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- The arrow on the add-book screen sits fully above the keyboard on the phone; the two earlier
+  attempts measured the screen's position wrongly and changed nothing.
+
 ## 1.2.0 (build 9, 2026-10-26, TestFlight)
 
 What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan

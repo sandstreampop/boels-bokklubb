@@ -79,6 +79,20 @@ export function canvasSide(width: number, height: number, chrome: { vertical: nu
   return Math.max(200, Math.floor(Math.min(width - chrome.horizontal, height - chrome.vertical)));
 }
 
+/**
+ * The add-book screen is a page sheet. On a phone it is anchored to the bottom of the window and
+ * starts a gap below the top (about 55 points), and KeyboardAvoidingView pads from its own frame,
+ * which React Native believes starts at 0: measureInWindow says so too under the new architecture,
+ * because UIKit applies the sheet's offset outside the layout tree. So the keyboard covered the gap's
+ * worth of the done bar (updates 01a1798b and 01a17995, 2026-10-26). The gap is the window height
+ * minus the sheet's laid-out height, two numbers that are reliable; it is the keyboardVerticalOffset.
+ * On a tablet the sheet floats and UIKit moves it clear of the keyboard itself, so no offset there.
+ */
+export function sheetKeyboardOffset(windowHeight: number, sheetHeight: number, compact: boolean): number {
+  if (!compact || sheetHeight <= 0) return 0;
+  return Math.max(0, Math.round(windowHeight - sheetHeight));
+}
+
 /** In a wide landscape the crayons stand beside the canvas instead of under it. */
 export function crayonsBeside(layout: Layout): boolean {
   return layout.size === 'wide' && layout.landscape;

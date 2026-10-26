@@ -1,7 +1,7 @@
 import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,11 +13,13 @@ import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
 import { StarRating } from '@/components/StarRating';
 import { WizardProgress, type WizardStep } from '@/components/WizardProgress';
+import { sheetKeyboardOffset } from '@/lib/layout';
 import { inspect } from '@/lib/machines/inspect';
 import { STEPS, newBookMachine } from '@/lib/machines/newBook';
 import { swishIn, swishOut } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { colors, fonts, radius } from '@/lib/theme';
+import { useLayout } from '@/lib/useLayout';
 
 const WIZARD: WizardStep[] = [
   { icon: 'camera', label: 'Fota boken' },
@@ -49,13 +51,13 @@ export default function NewBook() {
 
   const next = () => send({ type: 'NEXT' });
 
-  // This screen is a page sheet, which starts below the top of the window (about 55 points on a
-  // phone, more on an iPad). KeyboardAvoidingView pads from its own frame, not the window, so
-  // without this offset the keyboard covers that much of the bar. Measured in the window on every
-  // layout (a rotation moves the sheet). A bridge from a native measurement, one of the allowed effects.
-  const root = useRef<ComponentRef<typeof View>>(null);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
-  const measure = () => root.current?.measureInWindow((_x, y) => setKeyboardOffset(Math.max(0, Math.round(y))));
+  // This screen is a page sheet. KeyboardAvoidingView pads from a frame React Native believes
+  // starts at the top of the window, so on a phone the keyboard covered the sheet's top gap worth
+  // of the bar. The gap is the window height minus this view's laid-out height (lib/layout.ts,
+  // sheetKeyboardOffset); measureInWindow cannot see it under the new architecture.
+  const layout = useLayout();
+  const [sheetHeight, setSheetHeight] = useState(0);
+  const keyboardOffset = sheetKeyboardOffset(layout.height, sheetHeight, layout.compact);
 
   // Capitals, no autocorrect: CapsInput. The rest is the wizard's.
   const inputProps = {
@@ -67,7 +69,7 @@ export default function NewBook() {
   };
 
   return (
-    <View ref={root} collapsable={false} style={styles.root} onLayout={measure}>
+    <View style={styles.root} onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={keyboardOffset} style={styles.root}>
       <View style={[styles.top, { paddingTop: Platform.OS === 'ios' ? 14 : insets.top + 12 }]}>
         <RoundButton

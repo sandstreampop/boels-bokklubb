@@ -82,7 +82,10 @@ export async function builds({ buildNumber = null, appVersion = null, limit = 10
  * Polls every minute; a FAILED or INVALID state throws. EAS submits the build as soon as it is
  * built, so the first minutes usually find nothing at all, which is not an error.
  */
-export async function waitForProcessedBuild({ buildNumber, appVersion, timeoutMinutes = 60, log = console.log }) {
+// 100 minutes, not 60: on 2026-10-26 EAS's submit queue held build 9 for 62 minutes before the
+// upload, and the ship went red seconds before Apple marked it VALID (finish wrote "What to Test"
+// by hand). ship.yml gives the job 120 minutes; the EAS build wait before this is usually under 10.
+export async function waitForProcessedBuild({ buildNumber, appVersion, timeoutMinutes = 100, log = console.log }) {
   const deadline = Date.now() + timeoutMinutes * 60_000;
   let seen = null;
   while (Date.now() < deadline) {

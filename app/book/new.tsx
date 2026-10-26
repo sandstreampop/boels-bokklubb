@@ -7,8 +7,8 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CapsInput } from '@/components/CapsInput';
+import { DoneBar } from '@/components/DoneBar';
 import { Icon } from '@/components/Icon';
-import { KeyboardDone } from '@/components/KeyboardDone';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
 import { StarRating } from '@/components/StarRating';
@@ -18,11 +18,6 @@ import { STEPS, newBookMachine } from '@/lib/machines/newBook';
 import { swishIn, swishOut } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { colors, fonts, radius } from '@/lib/theme';
-import { useKeyboardShown } from '@/lib/useKeyboard';
-import { useLayout } from '@/lib/useLayout';
-
-/** The next-arrow bar on the keyboard is this screen's; the name and author fields point at it. */
-const NEXT_BAR = 'wizard-next';
 
 const WIZARD: WizardStep[] = [
   { icon: 'camera', label: 'Fota boken' },
@@ -52,16 +47,10 @@ export default function NewBook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.value]);
 
-  // One next button at a time on the phone: while the keyboard is up, the arrow on the keyboard
-  // bar is it (see components/KeyboardDone.tsx); the iPad keeps both, its keyboard can float.
-  const layout = useLayout();
-  const keyboardShown = useKeyboardShown();
-  const pageButton = !(layout.compact && keyboardShown && Platform.OS === 'ios');
   const next = () => send({ type: 'NEXT' });
 
   // Capitals, no autocorrect: CapsInput. The rest is the wizard's.
   const inputProps = {
-    inputAccessoryViewID: NEXT_BAR,
     returnKeyType: 'done' as const,
     maxLength: 120,
     placeholderTextColor: colors.pink,
@@ -144,19 +133,14 @@ export default function NewBook() {
         )}
       </Animated.View>
 
-      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        {pageButton && (
-          <RoundButton
-            icon={index === STEPS.length - 1 ? 'check' : 'next'}
-            size={72}
-            label={index === STEPS.length - 1 ? 'Spara' : 'Nästa'}
-            onPress={next}
-            disabled={!canNext || busy}
-          />
-        )}
-      </View>
-      {/* The name and author steps type; their keyboard carries the arrow. The stars step has no keyboard. */}
-      <KeyboardDone id={NEXT_BAR} icon="next" label="Nästa" onPress={next} disabled={!canNext || busy} />
+      {/* The bar the keyboard pushes up on the typing steps; at the bottom edge on the others. */}
+      <DoneBar
+        icon={index === STEPS.length - 1 ? 'check' : 'next'}
+        label={index === STEPS.length - 1 ? 'Spara' : 'Nästa'}
+        onPress={next}
+        disabled={!canNext || busy}
+        bottomInset={insets.bottom}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -200,5 +184,4 @@ const styles = StyleSheet.create({
   },
   titleEcho: { fontFamily: fonts.displaySemi, fontSize: 20, lineHeight: 26, color: colors.muted, textAlign: 'center' },
   author: { fontFamily: fonts.bodySemi, fontSize: 24, color: colors.text, textAlign: 'center', width: '100%', paddingVertical: 6 },
-  bar: { alignItems: 'flex-end', paddingHorizontal: 24, paddingTop: 10 },
 });

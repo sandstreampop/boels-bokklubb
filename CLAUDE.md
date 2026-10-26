@@ -22,11 +22,11 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 - No autocorrect, no spellcheck anywhere, and she writes in capitals: her spelling is the point.
   Every field she writes in is `components/CapsInput.tsx`, which uppercases in software (the
   iPad keyboard ignores `autoCapitalize="characters"`) and sets the no-autocorrect props.
-- Every keyboard carries its one button on top (`components/KeyboardDone.tsx`, an
-  InputAccessoryView): the check in the writer, the next arrow in the wizard, the send arrow on
-  the password's number pad. On the phone the page's own button steps aside while the keyboard is
-  up (`lib/useKeyboard.ts`), so there is exactly one; the iPad keeps both because a floating
-  keyboard has no bar. A new text field points at its screen's bar with `inputAccessoryViewID`.
+- A screen she types on ends in one full-width pink bar with one round button in the middle
+  (`components/DoneBar.tsx`), the last child of its KeyboardAvoidingView, so the keyboard lifts
+  it and it sits right on the keys: the check in the writer, the next arrow in the wizard. Not
+  React Native's InputAccessoryView: under the new architecture it rendered nothing in the
+  writer's Modal and a stray strip over the top of the wizard (update 01a17979, 2026-10-26).
 - The app runs on the iPad too, portrait and landscape, since build 9 (docs/PRD-build-9.md). The
   phone is untouched: every size comes from `lib/layout.ts`, whose `compact` class is the phone,
   and `scripts/layout-check.mjs` refuses a change that moves a pixel there.

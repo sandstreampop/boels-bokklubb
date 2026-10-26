@@ -5,19 +5,14 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CapsInput } from './CapsInput';
-import { KeyboardDone } from './KeyboardDone';
+import { DoneBar } from './DoneBar';
 import { PromptLine, Wand, usePromptSwap } from './Prompt';
-import { RoundButton } from './RoundButton';
 import { Unicorn } from './Unicorn';
 import { inspect } from '@/lib/machines/inspect';
 import { canReroll, writerMachine, writtenAnswer, type WrittenAnswer } from '@/lib/machines/writer';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
 import { colors, fonts } from '@/lib/theme';
-import { useKeyboardShown } from '@/lib/useKeyboard';
 import { MODAL_ORIENTATIONS, useLayout } from '@/lib/useLayout';
-
-/** The done bar on the keyboard is this screen's; its fields point at it. */
-const DONE_BAR = 'writer-done';
 
 type Props = {
   bookId: string;
@@ -69,15 +64,9 @@ export function WriterOverlay({ bookId, visible, onDone }: Props) {
     maxLength: 4000,
     editable: writing,
     scrollEnabled: false,
-    inputAccessoryViewID: DONE_BAR,
   };
   const column = layout.compact ? null : { width: '100%' as const, maxWidth: layout.maxContent, alignSelf: 'center' as const };
-  // One done button at a time: while the phone's keyboard is up, the one on the keyboard bar is
-  // it and the page's own steps aside. The iPad keeps both (its keyboard can float, and a floating
-  // keyboard has no bar).
-  const keyboardShown = useKeyboardShown();
   const done = () => send({ type: 'DONE' });
-  const pageButton = !(layout.compact && keyboardShown && Platform.OS === 'ios');
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" supportedOrientations={MODAL_ORIENTATIONS} onRequestClose={() => send({ type: 'DONE' })}>
@@ -95,12 +84,16 @@ export function WriterOverlay({ bookId, visible, onDone }: Props) {
               ))}
           </View>
         </ScrollView>
-        <View style={[styles.bar, column, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          {/* Below the text, nodding now and then; the done button is what she leans toward. */}
-          <Unicorn pose="writing" placement="inline" />
-          {pageButton && <RoundButton icon="check" size={72} label="Klar" onPress={done} disabled={!writing} />}
-        </View>
-        <KeyboardDone id={DONE_BAR} icon="check" label="Klar" onPress={done} disabled={!writing} />
+        {/* The bar the keyboard pushes up: the check in the middle, the unicorn beside it, nodding now and then. */}
+        <DoneBar
+          icon="check"
+          label="Klar"
+          onPress={done}
+          disabled={!writing}
+          left={<Unicorn pose="writing" placement="inline" />}
+          bottomInset={insets.bottom}
+          contentStyle={column}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -154,13 +147,6 @@ const styles = StyleSheet.create({
     minHeight: 160,
     textAlignVertical: 'top',
     padding: 0,
-  },
-  bar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: 24,
-    paddingTop: 10,
   },
   fillRow: {
     flexDirection: 'row',

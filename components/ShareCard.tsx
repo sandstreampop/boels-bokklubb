@@ -7,6 +7,7 @@ import { captureRef, type CaptureOptions } from 'react-native-view-shot';
 import { Icon } from './Icon';
 import { RainbowBar, RainbowFill } from './Rainbow';
 import { StatTiles } from './StatTiles';
+import { features } from '@/lib/features';
 import { formatDate } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
 import type { ShareTarget } from '@/lib/machines/share';
@@ -123,7 +124,8 @@ function EntryBody({ target, onImage }: { target: { entryId: string; bookId: str
 
 /** Her words in display type, verbatim; a fill-in prompt wraps around them, any other sits above. */
 function Words({ entry }: { entry: Entry }) {
-  const words = entry.kind === 'audio' ? entry.transcript : entry.text;
+  // A recording's words are its transcript, when transcription is on (lib/features.ts); else the mic alone.
+  const words = entry.kind === 'audio' ? (features.transcription ? entry.transcript : null) : entry.text;
   const fill = isFillIn(entry.prompt) ? splitFillIn(entry.prompt) : null;
   return (
     <View style={styles.words}>

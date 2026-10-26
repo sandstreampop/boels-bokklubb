@@ -15,6 +15,7 @@ import { AppState } from 'react-native';
 import { assign, createActor, fromPromise, setup } from 'xstate';
 
 import { inspect } from './inspect';
+import { features } from '@/lib/features';
 import { fileExists, mimeFor, rebase } from '@/lib/files';
 import { patchBook, patchEntry, rememberLocalMedia } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
@@ -59,7 +60,8 @@ function rowOf(e: Entry) {
     prompt: e.prompt,
     media_path: e.media_path,
     duration_ms: e.duration_ms,
-    transcript_status: e.kind === 'audio' ? 'pending' : 'none',
+    // With transcription off (lib/features.ts) a recording is stored as 'none', whatever the entry carried.
+    transcript_status: e.kind === 'audio' && features.transcription ? 'pending' : 'none',
   };
 }
 
@@ -124,7 +126,7 @@ async function runJob(job: Job): Promise<void> {
   const { error } = await supabase.from('entries').upsert(rowOf(entry));
   if (error) throw error;
   patchEntry(entry.book_id, entry.id, { pending: false });
-  if (entry.kind === 'audio') void requestTranscription(entry.id, entry.book_id);
+  if (entry.kind === 'audio' && features.transcription) void requestTranscription(entry.id, entry.book_id);
 }
 
 // ---- the machine -----------------------------------------------------------------------------------

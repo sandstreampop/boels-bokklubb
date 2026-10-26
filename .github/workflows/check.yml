@@ -27,9 +27,13 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - name: The machines keep their invariants (tests/)
+        run: npm test
       - run: npx expo-doctor
       - name: Changelog line for every change Boel or a relative sees
         run: node scripts/changelog.mjs check
+      - name: The phone layout is unchanged (lib/layout.ts in compact)
+        run: node --no-warnings --experimental-strip-types scripts/layout-check.mjs
       - name: The bundle carries its Supabase config (EAS production environment)
         run: node scripts/ship.mjs prove
         env:

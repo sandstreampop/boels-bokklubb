@@ -22,6 +22,12 @@ type Props = {
   prompt: string;
   /** Called when the wand is tapped; the owner picks the next prompt and passes it back. */
   onReroll: () => void;
+  /**
+   * She has started answering (typed, drawn, pressed record): the wand fades like a disabled
+   * button and ignores taps, so the question stored with the entry is the one she answered
+   * (docs/PRD-build-9.md §1). The owner derives it from its mode's machine.
+   */
+  locked?: boolean;
   color: string;
   wandColor: string;
   size?: number;
@@ -75,7 +81,7 @@ export function usePromptSwap(prompt: string) {
   return { shown, leaving, enterStyle, leaveStyle, burst };
 }
 
-export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, align = 'left', style, textStyle }: Props) {
+export function PromptLine({ prompt, onReroll, locked = false, color, wandColor, size = 26, align = 'left', style, textStyle }: Props) {
   const { shown, leaving, enterStyle, leaveStyle, burst } = usePromptSwap(prompt);
 
   const text = [styles.text, { color, fontSize: size, lineHeight: Math.round(size * 1.2), textAlign: align }, textStyle];
@@ -90,26 +96,30 @@ export function PromptLine({ prompt, onReroll, color, wandColor, size = 26, alig
           </Animated.Text>
         )}
       </View>
-      <Wand color={wandColor} burst={burst} onPress={onReroll} />
+      <Wand color={wandColor} burst={burst} onPress={onReroll} locked={locked} />
     </View>
   );
 }
 
-export function Wand({ color, burst, onPress }: { color: string; burst: SharedValue<number>; onPress: () => void }) {
+/** The magic wand. Locked (see Props) it fades to the disabled opacity and does nothing on a tap. */
+export function Wand({ color, burst, onPress, locked = false }: { color: string; burst: SharedValue<number>; onPress: () => void; locked?: boolean }) {
   const scale = useSharedValue(1);
   const squish = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }, { rotate: `${(1 - scale.value) * -60}deg` }] }));
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Ny fråga"
+      accessibilityState={{ disabled: locked }}
+      disabled={locked}
       hitSlop={10}
       onPress={() => {
+        if (locked) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         play('wand');
         scale.set(withSequence(withSpring(0.8, { damping: 10, stiffness: 400 }), withSpring(1, { damping: 8, stiffness: 240 })));
         onPress();
       }}
-      style={styles.wand}>
+      style={[styles.wand, locked && styles.wandLocked]}>
       <Animated.View style={squish}>
         <Icon name="wand" size={WAND} color={color} strokeWidth={2.2} />
       </Animated.View>
@@ -125,5 +135,7 @@ const styles = StyleSheet.create({
   text: { fontFamily: fonts.displaySemi },
   leaving: { position: 'absolute', left: 0, right: 0 },
   wand: { width: WAND, height: WAND, alignItems: 'center', justifyContent: 'center' },
+  // The same opacity a disabled RoundButton has: one language for "not now".
+  wandLocked: { opacity: 0.35 },
   tip: { left: WAND * 0.24, top: -WAND * 0.34 },
 });

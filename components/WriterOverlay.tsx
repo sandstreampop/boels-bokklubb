@@ -4,82 +4,86 @@ import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, Te
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CapsInput } from './CapsInput';
 import { PromptLine, Wand, usePromptSwap } from './Prompt';
 import { RoundButton } from './RoundButton';
 import { Unicorn } from './Unicorn';
 import { inspect } from '@/lib/machines/inspect';
-import { writerMachine } from '@/lib/machines/writer';
+import { canReroll, writerMachine, writtenAnswer, type WrittenAnswer } from '@/lib/machines/writer';
 import { isFillIn, splitFillIn } from '@/lib/prompts';
 import { colors, fonts } from '@/lib/theme';
+import { MODAL_ORIENTATIONS, useLayout } from '@/lib/useLayout';
 
 type Props = {
   bookId: string;
   visible: boolean;
-  /** The question at the top. The wand asks the owner for a new one. */
-  prompt: string;
-  onReroll: () => void;
-  /** Called once when she is done, whether or not anything was saved. */
-  onDone: () => void;
+  /** Called once when she is done, with her words (maybe empty) and the question they answer. */
+  onDone: (answer: WrittenAnswer) => void;
 };
 
 /**
  * Full-screen writing, driven by lib/machines/writer.ts, the same shape as the recorder: the
  * prompt at the top, a big text area, a done button bottom right and no cancel. A fill-in prompt
- * puts the caret in its blank.
+ * puts the caret in its blank. The machine owns the question: the wand sends REROLL and is lit
+ * only while the machine accepts it. On a tablet the text sits in a centred column
+ * (lib/layout.ts); on the phone nothing is added.
  */
-export function WriterOverlay({ bookId, visible, prompt, onReroll, onDone }: Props) {
+export function WriterOverlay({ bookId, visible, onDone }: Props) {
   const insets = useSafeAreaInsets();
+  const layout = useLayout();
   const [state, send] = useMachine(writerMachine, {
     input: { bookId },
     inspect,
   });
-  const { text } = state.context;
+  const { text, prompt } = state.context;
   const writing = state.matches('writing');
+  const locked = !canReroll(state);
 
   // Opening the overlay starts the machine. START is only accepted in idle, so this cannot double-start.
   useEffect(() => {
-    if (visible) send({ type: 'START', prompt });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (visible) send({ type: 'START' });
   }, [visible, send]);
 
-  // Hand control back to the book page and reset for next time.
+  // Hand the answer to the book page and reset for next time.
   useEffect(() => {
     if (state.matches('done')) {
-      onDone();
+      onDone(writtenAnswer(state));
       send({ type: 'RESET' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.value]);
 
   const setText = (t: string) => send({ type: 'SET_TEXT', text: t });
+  const reroll = () => send({ type: 'REROLL' });
+  // Capitals and no autocorrect come from CapsInput.
   const inputProps = {
     value: text,
     onChangeText: setText,
     multiline: true,
     autoFocus: true,
-    autoCorrect: false,
-    spellCheck: false,
-    autoCapitalize: 'characters' as const,
-    autoComplete: 'off' as const,
     maxLength: 4000,
     editable: writing,
     scrollEnabled: false,
   };
+  const column = layout.compact ? null : { width: '100%' as const, maxWidth: layout.maxContent, alignSelf: 'center' as const };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => send({ type: 'DONE' })}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" supportedOrientations={MODAL_ORIENTATIONS} onRequestClose={() => send({ type: 'DONE' })}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
         <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingTop: insets.top + 20 }]} keyboardShouldPersistTaps="handled">
-          {isFillIn(prompt) ? (
-            <FillIn prompt={prompt} onReroll={onReroll} inputProps={inputProps} />
-          ) : (
-            <>
-              <PromptLine prompt={prompt} onReroll={onReroll} color={colors.pinkDeep} wandColor={colors.pink} size={28} />
-              <TextInput id="writer-text" style={styles.input} {...inputProps} />
-            </>
-          )}
+          <View style={[styles.column, column]}>
+            {prompt !== null &&
+              (isFillIn(prompt) ? (
+                <FillIn prompt={prompt} onReroll={reroll} locked={locked} inputProps={inputProps} />
+              ) : (
+                <>
+                  <PromptLine prompt={prompt} onReroll={reroll} locked={locked} color={colors.pinkDeep} wandColor={colors.pink} size={28} />
+                  <CapsInput id="writer-text" style={styles.input} {...inputProps} />
+                </>
+              ))}
+          </View>
         </ScrollView>
-        <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.bar, column, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {/* Below the text, nodding now and then; the done button is what she leans toward. */}
           <Unicorn pose="writing" placement="inline" />
           <RoundButton icon="check" size={72} label="Klar" onPress={() => send({ type: 'DONE' })} disabled={!writing} />
@@ -90,21 +94,31 @@ export function WriterOverlay({ bookId, visible, prompt, onReroll, onDone }: Pro
 }
 
 /** The prompt with her words typed straight into the blank, which is underlined and holds the caret. */
-function FillIn({ prompt, onReroll, inputProps }: { prompt: string; onReroll: () => void; inputProps: React.ComponentProps<typeof TextInput> }) {
+function FillIn({
+  prompt,
+  onReroll,
+  locked,
+  inputProps,
+}: {
+  prompt: string;
+  onReroll: () => void;
+  locked: boolean;
+  inputProps: React.ComponentProps<typeof TextInput>;
+}) {
   const { before, after } = splitFillIn(prompt);
   const { enterStyle, burst } = usePromptSwap(prompt);
   const words = (s: string) => s.split(' ').filter((w) => w.length > 0);
   return (
     <Animated.View style={[styles.fillRow, enterStyle]}>
       <View style={styles.wand}>
-        <Wand color={colors.pink} burst={burst} onPress={onReroll} />
+        <Wand color={colors.pink} burst={burst} onPress={onReroll} locked={locked} />
       </View>
       {words(before).map((w, i) => (
         <Text key={`b${i}`} style={styles.fillWord}>
           {w}
         </Text>
       ))}
-      <TextInput id="writer-blank" style={[styles.input, styles.blank]} {...inputProps} />
+      <CapsInput id="writer-blank" style={[styles.input, styles.blank]} {...inputProps} />
       {words(after).map((w, i) => (
         <Text key={`a${i}`} style={styles.fillWord}>
           {w}
@@ -117,7 +131,8 @@ function FillIn({ prompt, onReroll, inputProps }: { prompt: string; onReroll: ()
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.white },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingBottom: 24, gap: 18 },
+  content: { paddingHorizontal: 24, paddingBottom: 24 },
+  column: { gap: 18 },
   input: {
     fontFamily: fonts.body,
     fontSize: 24,

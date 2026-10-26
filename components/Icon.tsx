@@ -24,7 +24,8 @@ export type IconName =
   | 'undo'
   | 'share'
   | 'next'
-  | 'person';
+  | 'person'
+  | 'star';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -38,6 +39,9 @@ export function Icon({ name, size = 24, color = colors.text, strokeWidth = 2.4 }
           <Line x1={5} y1={12} x2={19} y2={12} {...common} />
           <Path d="M13 6l6 6-6 6" {...common} />
         </>
+      )}
+      {name === 'star' && (
+        <Path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.2 6.1L12 17.1l-5.5 2.9 1.2-6.1-4.5-4.3 6.1-.8z" {...common} />
       )}
       {name === 'person' && (
         <>

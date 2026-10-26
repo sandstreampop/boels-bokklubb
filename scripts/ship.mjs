@@ -210,10 +210,24 @@ function proveBundle() {
   ok(`bundle carries ${host} (${bundles.length} bundle file(s) checked)`);
 }
 
+// ---- the gates -----------------------------------------------------------------------------------
+
+/**
+ * Every gate (scripts/preflight.mjs --full) before a manual ship. `auto` runs in ship.yml, which
+ * needs check.yml (the same gates) to pass first; the escape hatches have no such job, so they
+ * run it here. A release that cannot pass the gates is not released.
+ */
+function preflight() {
+  log('Preflight: every gate before anything is released');
+  const r = spawnSync('node', [join(ROOT, 'scripts', 'preflight.mjs'), '--full'], { cwd: ROOT, stdio: 'inherit' });
+  if (r.status !== 0) fail('preflight failed; nothing was shipped');
+}
+
 // ---- modes ---------------------------------------------------------------------------------------
 
 function update() {
   needSecrets('EXPO_TOKEN');
+  if (mode !== 'auto') preflight();
   const body = linesToShip();
   const { current: version } = appVersion();
   proveBundle();
@@ -233,6 +247,7 @@ function update() {
 }
 
 async function build() {
+  if (mode !== 'auto') preflight();
   const apple = appleEnv();
   if (flag('refresh') && !unreleased()) {
     const path = join(ROOT, 'docs', 'CHANGELOG.md');
@@ -321,6 +336,7 @@ async function shipWeb() {
 
 /** A web-only ship: the function, the page, and the Unreleased lines filed as `### Web (date)`. */
 async function web() {
+  if (mode !== 'auto') preflight();
   const body = linesToShip();
   await shipWeb();
   const { title } = release({ kind: 'web' });

@@ -76,7 +76,16 @@ read only, for relatives. The page is called Boels bokklubb; "släkten" is the b
 
 Success: within a month a relative mentions something Boel made without Viktor having sent it.
 
-## Later: build 9 and beyond (not designed yet)
+## Done 2026-10-26: build 9, "paddan" (docs/PRD-build-9.md)
+
+From Viktor's message, shipped as one native build (1.2.0): the app on the iPad in both
+orientations with the phone layout locked by a check; the question saved with an answer is the
+one on screen when she finished (an invariant of the mode machines, with tests); the wand goes
+quiet once she has started; the add-book wizard ends with the stars; capitals enforced in
+software; transcription off behind a flag; and a committed pre-push hook that runs every gate
+before anything is released.
+
+## Later: build 10 and beyond (not designed yet)
 
 - Parent-recorded prompt clips as an optional override of the text prompts.
 - Android build, if a relative wants it. The config is already there.

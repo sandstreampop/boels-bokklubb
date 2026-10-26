@@ -7,7 +7,9 @@ fotar och sätter stjärnor. Allt sparas i molnet och går att titta tillbaka p�
 
 - Expo SDK 58, React Native, TypeScript, Expo Router. Built in the cloud with EAS, shipped via TestFlight.
 - Supabase: Postgres (`books`, `entries`), private storage buckets (`covers`, `media`), one family
-  login, and an edge function that transcribes voice notes with OpenAI.
+  login, and an edge function that transcribes voice notes with OpenAI (off since build 9 behind
+  `features.transcription` in `lib/features.ts`: her voice is the answer).
+- iPhone and iPad (portrait and landscape) since build 9; the phone layout is locked by a check.
 - Local-first: entries appear instantly and upload from a durable outbox when online.
 - A read-only web version for relatives (`web/`, Vite, GitHub Pages) behind one secret link and a
   four-digit PIN, reading through a second edge function that hands out signed URLs.
@@ -34,8 +36,9 @@ Actions secrets (the `github` step does it where `gh` is logged in): CI ships.
 
 ## Day to day
 
-    npm run typecheck && npm run lint
+    npm run preflight     # typecheck, lint, tests, the phone-layout check, the changelog gate
     # write a line under "## Unreleased" in docs/CHANGELOG.md, commit, push
+    # (the committed pre-push hook runs the preflight again on every push to main; nothing ships without it)
 
 A push to main ships by itself (`.github/workflows/ship.yml`): an over-the-air update for JavaScript
 changes, a TestFlight build with a new version number when the native project changed. The

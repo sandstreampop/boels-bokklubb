@@ -38,7 +38,11 @@ const config: ExpoConfig =   {
     "ios": {
       "bundleIdentifier": "com.sandstreampop.boelsbokklubb",
       "buildNumber": "1",
-      "supportsTablet": false,
+      // Build 9 (docs/PRD-build-9.md §2): the real iPad window instead of a scaled iPhone. The
+      // top-level "portrait" stays the iPhone's rule; with a tablet on and requireFullScreen off,
+      // prebuild adds UISupportedInterfaceOrientations~ipad with all four orientations, which App
+      // Store review requires. Every screen lays itself out from lib/layout.ts.
+      "supportsTablet": true,
       "infoPlist": {
         "CFBundleDisplayName": "Boels bokklubb",
         "CFBundleDevelopmentRegion": "sv",

@@ -6,6 +6,22 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan
+liggande; lägg till en bok och sätt stjärnor i sista steget; byt fråga med trollstaven, skriv en
+bokstav och se att staven slocknar. På telefonen ska inget se annorlunda ut.
+
+- The app works on the iPad, upright and on its side: more books across the shelf, the book page
+  beside its entries on a wide screen, and recording, writing and drawing use the whole screen.
+  The phone looks exactly as before.
+- The question saved with what she writes, draws or tells is the one on screen when she finishes;
+  before, a question she had swapped with the wand was shown but the first one was saved.
+- The wand goes quiet once she has started: typed a letter, drawn a stroke or pressed record.
+  Clearing the text or undoing the stroke lights it again.
+- Adding a book has a fourth step, the stars, which she can skip.
+- Every letter she types is a capital, on the iPad too, where the keyboard ignored the hint.
+- Recordings show no transcript any more, old ones included, in the app and on the web: the text
+  was often wrong, so her voice is the answer.
+
 ## 1.1.0 (build 8, 2026-10-25, TestFlight)
 
 What to test: inget nytt i appen; öppna webblänken på telefonen.

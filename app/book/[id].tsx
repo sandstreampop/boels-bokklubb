@@ -2,7 +2,7 @@ import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,25 +25,33 @@ import { celebrated, selectBook, selectCelebrate, selectComplete, selectEntries,
 import { pullEntries } from '@/lib/sync';
 import { warn } from '@/lib/telemetry';
 import { colors, fonts, radius } from '@/lib/theme';
+import { useLayout } from '@/lib/useLayout';
 
 const COVER_W = 120;
 const COVER_H = 150;
 
+/**
+ * The book page: the cover, title, stars and the four buttons above the stream of entries. On the
+ * phone the header is the list's header, as always. On a tablet (lib/layout.ts) the stream sits
+ * in a centred column, and a wide landscape puts the header in a column of its own on the left
+ * with the stream beside it. The same header element in every case.
+ */
 export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const layout = useLayout();
   const book = useStore(selectBook(id));
   const entries = useStore(selectEntries(id));
   const complete = useStore(selectComplete(id));
   const celebrate = useStore(selectCelebrate(id));
   const cover = useMediaUri('covers', book?.cover_path ?? null);
   const [state, send] = useMachine(bookMachine, { input: { bookId: id ?? '' }, inspect });
-  const { writePrompt, speakPrompt, drawPrompt } = state.context;
   const recording = state.matches('recording');
   const writing = state.matches('writing');
   const drawing = state.matches('drawing');
   const drawingCover = state.matches('drawingCover');
+  const twoPane = layout.twoPane;
   useScreen('book', { id, found: !!book });
 
   useFocusEffect(
@@ -82,7 +90,7 @@ export default function BookPage() {
               {complete && <RainbowRing width={COVER_W} height={COVER_H} radius={radius.md} draw={celebrate} />}
               <View ref={coverRef} collapsable={false} style={styles.cover}>
                 {cover ? (
-                <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+                  <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
                 ) : (
                   <>
                     <RainbowFill seed={book.id} style={StyleSheet.absoluteFill} />
@@ -91,7 +99,8 @@ export default function BookPage() {
                 )}
               </View>
             </Squishy>
-            <View style={styles.titleBlock}>
+            {/* In its own pane the title is far from the unicorn and needs no clearance. */}
+            <View style={[styles.titleBlock, twoPane && styles.titleBlockPane]}>
               <Text style={styles.title}>{book.title}</Text>
               {!!book.author && <Text style={styles.author}>{book.author}</Text>}
             </View>
@@ -106,7 +115,7 @@ export default function BookPage() {
         </View>
       ) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [book, cover, complete, celebrate],
+    [book, cover, complete, celebrate, twoPane],
   );
 
   if (!book || !id) {
@@ -114,20 +123,32 @@ export default function BookPage() {
     return <View style={styles.root} />;
   }
 
+  const stream = { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 40, paddingHorizontal: 20, gap: 14 };
+
   return (
     <Animated.View entering={swishIn()} style={styles.root}>
-      <FlatList
-        data={entries}
-        keyExtractor={(e) => e.id}
-        contentContainerStyle={{
-          paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 40,
-          paddingHorizontal: 20,
-          gap: 14,
-        }}
-        ListHeaderComponent={header ?? undefined}
-        renderItem={({ item }) => <EntryCard entry={item} />}
-      />
+      {twoPane ? (
+        <View style={styles.panes}>
+          <ScrollView style={{ width: layout.paneWidth }} contentContainerStyle={stream}>
+            {header}
+          </ScrollView>
+          <FlatList
+            style={styles.pane}
+            data={entries}
+            keyExtractor={(e) => e.id}
+            contentContainerStyle={[stream, { width: '100%', maxWidth: layout.maxContent }]}
+            renderItem={({ item }) => <EntryCard entry={item} />}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={entries}
+          keyExtractor={(e) => e.id}
+          contentContainerStyle={[stream, layout.compact ? null : { width: '100%', maxWidth: layout.maxContent, alignSelf: 'center' }]}
+          ListHeaderComponent={header ?? undefined}
+          renderItem={({ item }) => <EntryCard entry={item} />}
+        />
+      )}
       <RoundButton
         icon="back"
         size={44}
@@ -140,30 +161,18 @@ export default function BookPage() {
         style={[styles.back, { top: insets.top + 8 }]}
       />
 
+      {/* Each mode owns its question and hands it back inside its answer (docs/PRD-build-9.md §1). */}
       <RecorderOverlay
         bookId={id}
         visible={recording}
-        onDone={(uri, durationMs) => send({ type: 'RECORDING_DONE', uri, durationMs })}
+        onDone={(answer) => send({ type: 'RECORDING_DONE', ...answer })}
         onUnavailable={() => send({ type: 'RECORDING_UNAVAILABLE' })}
         onSkip={() => send({ type: 'RECORDING_SKIPPED' })}
-        prompt={speakPrompt}
-        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'speak' })}
       />
 
-      <DrawingOverlay
-        visible={drawing || drawingCover}
-        prompt={drawing ? drawPrompt : null}
-        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'draw' })}
-        onDone={(uri) => send(drawingCover ? { type: 'COVER_DONE', uri } : { type: 'DRAWING_DONE', uri })}
-      />
+      <DrawingOverlay visible={drawing || drawingCover} cover={drawingCover} onDone={(answer) => send({ type: 'DRAWING_DONE', ...answer })} />
 
-      <WriterOverlay
-        bookId={id}
-        visible={writing}
-        prompt={writePrompt}
-        onReroll={() => send({ type: 'REROLL_PROMPT', pool: 'write' })}
-        onDone={() => send({ type: 'WRITING_DONE' })}
-      />
+      <WriterOverlay bookId={id} visible={writing} onDone={(answer) => send({ type: 'WRITING_DONE', ...answer })} />
 
       {origin && (
         <RainbowCelebration
@@ -180,6 +189,8 @@ export default function BookPage() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  panes: { flex: 1, flexDirection: 'row' },
+  pane: { flex: 1 },
   header: { gap: 22, paddingTop: 52, paddingBottom: 10 },
   coverRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-end' },
   coverWrap: { width: COVER_W, height: COVER_H },
@@ -199,6 +210,7 @@ const styles = StyleSheet.create({
   initial: { fontFamily: fonts.display, fontSize: 56, color: 'rgba(255,255,255,0.9)' },
   // The unicorn sits top right; a tall title stops short of her.
   titleBlock: { flex: 1, minWidth: 0, gap: 4, paddingBottom: 6, paddingRight: UNICORN.clearance - 20 },
+  titleBlockPane: { paddingRight: 0 },
   title: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32, color: colors.text },
   author: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.muted },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 4 },

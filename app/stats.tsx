@@ -10,17 +10,25 @@ import { swishIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { selectStats, useStore } from '@/lib/store';
 import { colors } from '@/lib/theme';
+import { useLayout } from '@/lib/useLayout';
 
 /** Totals only, no time axis. The share button bottom right (the unicorn has the top) previews the tiles as a card. */
 export default function StatsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const stats = useStore(selectStats);
+  const layout = useLayout();
   useScreen('stats');
 
   return (
     <Animated.View entering={swishIn()} style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 120 }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 120 },
+          // On a tablet the tiles sit in a centred column; on the phone nothing is added.
+          layout.compact ? null : { width: '100%', maxWidth: layout.maxContent, alignSelf: 'center' },
+        ]}>
         <StatTiles stats={stats} />
       </ScrollView>
       <RoundButton

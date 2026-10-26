@@ -1,45 +1,41 @@
-// What Boel can do on a book page: write, photograph, record, rate. One thing at a time.
+// What Boel can do on a book page: write, photograph, record, draw, rate. One thing at a time.
 //
-//   idle ──START_WRITING──▶ writing ──WRITING_DONE──▶ idle (fresh write prompt; the writer saved)
+//   idle ──START_WRITING──▶ writing ──WRITING_DONE(answer)──▶ savingText ──▶ idle
 //   idle ──TAKE_PHOTO──▶ takingPhoto (camera only, never the gallery) ──▶ idle
-//   idle ──START_RECORDING──▶ recording (fresh speak prompt) ──RECORDING_DONE──▶ savingAudio ──▶ idle
+//   idle ──START_RECORDING──▶ recording ──RECORDING_DONE(answer)──▶ savingAudio ──▶ idle
 //                                  └─RECORDING_SKIPPED / RECORDING_UNAVAILABLE──▶ idle
-//   idle ──START_DRAWING──▶ drawing (fresh draw prompt) ──DRAWING_DONE(uri)──▶ savingDrawing ──▶ idle
-//   idle ──DRAW_COVER──▶ drawingCover ──COVER_DONE(uri)──▶ savingCover ──▶ idle   (only while the book has no cover)
+//   idle ──START_DRAWING──▶ drawing ──DRAWING_DONE(answer)──▶ savingDrawing ──▶ idle
+//   idle ──DRAW_COVER──▶ drawingCover ──DRAWING_DONE(answer)──▶ savingCover ──▶ idle   (only while the book has no cover)
 //   idle ──RATE──▶ idle (rating is queued immediately)
-//   REROLL_PROMPT(pool) in any state swaps that pool's prompt; the one on screen at save time is stored.
+//
+// This machine holds no prompt. Each mode's machine (writer, drawing, recorder) picks and owns its
+// question and hands it back inside its answer (WrittenAnswer, DrawnAnswer, SpokenAnswer), so the
+// save here can only ever store the question that was on screen when she finished. The event
+// types require the prompt: a save without it does not compile. docs/PRD-build-9.md §1.
 
-import { assign, fromPromise, setup } from 'xstate';
+import { fromPromise, setup } from 'xstate';
 
-import { addAudioEntry, addDrawingEntry, addPhotoEntry, rateBook, setDrawnCover } from '@/lib/actions';
-import { setUnicornPose, type Pose } from '@/lib/machines/unicorn';
+import { addAudioEntry, addDrawingEntry, addPhotoEntry, addTextEntry, rateBook, setDrawnCover } from '@/lib/actions';
 import { takePhoto } from '@/lib/images';
-import { pickPrompt } from '@/lib/prompts';
-import { captureError, debug } from '@/lib/telemetry';
-import type { PromptPool } from '@/lib/types';
+import type { DrawnAnswer } from '@/lib/machines/drawing';
+import type { SpokenAnswer } from '@/lib/machines/recorder';
+import { setUnicornPose, type Pose } from '@/lib/machines/unicorn';
+import type { WrittenAnswer } from '@/lib/machines/writer';
+import { captureError } from '@/lib/telemetry';
 
 type Input = { bookId: string };
-type Context = Input & {
-  /** The question on the recording overlay. Picked when recording starts. */
-  speakPrompt: string | null;
-  /** The question on the writing screen. Picked when the page opens and after every writing. */
-  writePrompt: string;
-  /** The question on the canvas. Picked when drawing starts. */
-  drawPrompt: string | null;
-};
+type Context = Input;
 type Events =
   | { type: 'START_WRITING' }
-  | { type: 'WRITING_DONE' }
+  | ({ type: 'WRITING_DONE' } & WrittenAnswer)
   | { type: 'TAKE_PHOTO' }
   | { type: 'START_RECORDING' }
-  | { type: 'RECORDING_DONE'; uri: string; durationMs: number }
+  | ({ type: 'RECORDING_DONE' } & SpokenAnswer)
   | { type: 'RECORDING_UNAVAILABLE' }
   | { type: 'RECORDING_SKIPPED' }
   | { type: 'START_DRAWING' }
-  | { type: 'DRAWING_DONE'; uri: string | null }
   | { type: 'DRAW_COVER' }
-  | { type: 'COVER_DONE'; uri: string | null }
-  | { type: 'REROLL_PROMPT'; pool: PromptPool }
+  | ({ type: 'DRAWING_DONE' } & DrawnAnswer)
   | { type: 'RATE'; rating: number };
 
 export const bookMachine = setup({
@@ -50,7 +46,11 @@ export const bookMachine = setup({
       if (uri) await addPhotoEntry(input.bookId, uri);
       return !!uri;
     }),
-    saveDrawing: fromPromise(async ({ input }: { input: { bookId: string; uri: string | null; prompt: string | null } }) => {
+    saveText: fromPromise(async ({ input }: { input: { bookId: string } & WrittenAnswer }) => {
+      if (input.text) await addTextEntry(input.bookId, input.text, input.prompt);
+      return !!input.text;
+    }),
+    saveDrawing: fromPromise(async ({ input }: { input: { bookId: string } & DrawnAnswer }) => {
       if (input.uri) await addDrawingEntry(input.bookId, input.uri, input.prompt);
       return !!input.uri;
     }),
@@ -58,7 +58,7 @@ export const bookMachine = setup({
       if (input.uri) await setDrawnCover(input.bookId, input.uri);
       return !!input.uri;
     }),
-    saveAudio: fromPromise(({ input }: { input: { bookId: string; uri: string; durationMs: number; prompt: string | null } }) =>
+    saveAudio: fromPromise(({ input }: { input: { bookId: string } & SpokenAnswer }) =>
       addAudioEntry(input.bookId, input.uri, input.durationMs, input.prompt),
     ),
   },
@@ -66,25 +66,10 @@ export const bookMachine = setup({
     // Where the unicorn sits: the full-screen modes mount their own instance with the matching
     // pose, and `home` brings the root one back.
     pose: (_, params: { pose: Pose }) => setUnicornPose(params.pose),
-    reroll: assign(({ event }) => {
-      if (event.type !== 'REROLL_PROMPT') return {};
-      debug('prompt.reroll', { pool: event.pool });
-      const next = pickPrompt(event.pool);
-      return {
-        ...(event.pool === 'speak' ? { speakPrompt: next } : {}),
-        ...(event.pool === 'write' ? { writePrompt: next } : {}),
-        ...(event.pool === 'draw' ? { drawPrompt: next } : {}),
-      };
-    }),
   },
 }).createMachine({
   id: 'book',
-  context: ({ input }) => ({
-    ...input,
-    speakPrompt: null,
-    writePrompt: pickPrompt('write'),
-    drawPrompt: null,
-  }),
+  context: ({ input }) => ({ ...input }),
   initial: 'idle',
   on: {
     RATE: {
@@ -92,7 +77,6 @@ export const bookMachine = setup({
         rateBook(context.bookId, event.rating).catch((err) => captureError('book.rate', err, { bookId: context.bookId }));
       },
     },
-    REROLL_PROMPT: { actions: 'reroll' },
   },
   states: {
     idle: {
@@ -105,33 +89,49 @@ export const bookMachine = setup({
         DRAW_COVER: 'drawingCover',
       },
     },
+    writing: {
+      entry: { type: 'pose', params: { pose: 'writing' } },
+      on: { WRITING_DONE: 'savingText' },
+    },
+    savingText: {
+      invoke: {
+        src: 'saveText',
+        input: ({ context, event }) => ({
+          bookId: context.bookId,
+          text: event.type === 'WRITING_DONE' ? event.text : '',
+          prompt: event.type === 'WRITING_DONE' ? event.prompt : null,
+        }),
+        onDone: 'idle',
+        onError: { target: 'idle', actions: ({ event, context }) => captureError('book.addText', event.error, { bookId: context.bookId }) },
+      },
+    },
     drawing: {
-      entry: [assign({ drawPrompt: () => pickPrompt('draw') }), { type: 'pose', params: { pose: 'drawing' } }],
+      entry: { type: 'pose', params: { pose: 'drawing' } },
       on: { DRAWING_DONE: 'savingDrawing' },
     },
     savingDrawing: {
       invoke: {
         src: 'saveDrawing',
-        input: ({ context, event }) => ({ bookId: context.bookId, uri: event.type === 'DRAWING_DONE' ? event.uri : null, prompt: context.drawPrompt }),
+        input: ({ context, event }) => ({
+          bookId: context.bookId,
+          uri: event.type === 'DRAWING_DONE' ? event.uri : null,
+          prompt: event.type === 'DRAWING_DONE' ? event.prompt : null,
+        }),
         onDone: 'idle',
         onError: { target: 'idle', actions: ({ event, context }) => captureError('book.addDrawing', event.error, { bookId: context.bookId }) },
       },
     },
     drawingCover: {
       entry: { type: 'pose', params: { pose: 'drawing' } },
-      on: { COVER_DONE: 'savingCover' },
+      on: { DRAWING_DONE: 'savingCover' },
     },
     savingCover: {
       invoke: {
         src: 'saveCover',
-        input: ({ context, event }) => ({ bookId: context.bookId, uri: event.type === 'COVER_DONE' ? event.uri : null }),
+        input: ({ context, event }) => ({ bookId: context.bookId, uri: event.type === 'DRAWING_DONE' ? event.uri : null }),
         onDone: 'idle',
         onError: { target: 'idle', actions: ({ event, context }) => captureError('book.drawCover', event.error, { bookId: context.bookId }) },
       },
-    },
-    writing: {
-      entry: { type: 'pose', params: { pose: 'writing' } },
-      on: { WRITING_DONE: { target: 'idle', actions: assign({ writePrompt: () => pickPrompt('write') }) } },
     },
     takingPhoto: {
       invoke: {
@@ -142,7 +142,7 @@ export const bookMachine = setup({
       },
     },
     recording: {
-      entry: [assign({ speakPrompt: () => pickPrompt('speak') }), { type: 'pose', params: { pose: 'recording' } }],
+      entry: { type: 'pose', params: { pose: 'recording' } },
       on: { RECORDING_DONE: 'savingAudio', RECORDING_UNAVAILABLE: 'idle', RECORDING_SKIPPED: 'idle' },
     },
     savingAudio: {
@@ -152,7 +152,7 @@ export const bookMachine = setup({
           bookId: context.bookId,
           uri: event.type === 'RECORDING_DONE' ? event.uri : '',
           durationMs: event.type === 'RECORDING_DONE' ? event.durationMs : 0,
-          prompt: context.speakPrompt,
+          prompt: event.type === 'RECORDING_DONE' ? event.prompt : null,
         }),
         onDone: 'idle',
         onError: { target: 'idle', actions: ({ event, context }) => captureError('book.addAudio', event.error, { bookId: context.bookId }) },

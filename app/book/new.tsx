@@ -2,13 +2,15 @@ import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CapsInput } from '@/components/CapsInput';
 import { Icon } from '@/components/Icon';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
+import { StarRating } from '@/components/StarRating';
 import { WizardProgress, type WizardStep } from '@/components/WizardProgress';
 import { inspect } from '@/lib/machines/inspect';
 import { STEPS, newBookMachine } from '@/lib/machines/newBook';
@@ -20,17 +22,19 @@ const WIZARD: WizardStep[] = [
   { icon: 'camera', label: 'Fota boken' },
   { icon: 'pencil', label: 'Bokens namn' },
   { icon: 'person', label: 'Vem har skrivit den' },
+  { icon: 'star', label: 'Hur bra var den' },
 ];
 
 /**
  * Adding a book as a wizard (lib/machines/newBook.ts): a picture, then the title, then the author,
- * one per screen with the progress strip above. The machine's state is the step.
+ * then the stars (optional, there so she remembers), one per screen with the progress strip
+ * above. The machine's state is the step.
  */
 export default function NewBook() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [state, send] = useMachine(newBookMachine, { inspect });
-  const { step, title, author, coverUri, book } = state.context;
+  const { step, title, author, coverUri, rating, book } = state.context;
   const index = STEPS.indexOf(step);
   const canNext = state.can({ type: 'NEXT' });
   const busy = state.matches('picking') || state.matches('saving');
@@ -42,11 +46,8 @@ export default function NewBook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.value]);
 
+  // Capitals, no autocorrect: CapsInput. The rest is the wizard's.
   const inputProps = {
-    autoCorrect: false,
-    spellCheck: false,
-    autoCapitalize: 'characters' as const,
-    autoComplete: 'off' as const,
     returnKeyType: 'done' as const,
     maxLength: 120,
     placeholderTextColor: colors.pink,
@@ -91,7 +92,7 @@ export default function NewBook() {
         )}
         {step === 'title' && (
           <View style={styles.center}>
-            <TextInput
+            <CapsInput
               id="book-title"
               style={styles.title}
               value={title}
@@ -108,7 +109,7 @@ export default function NewBook() {
             <Text style={styles.titleEcho} numberOfLines={2}>
               {title}
             </Text>
-            <TextInput
+            <CapsInput
               id="book-author"
               style={styles.author}
               value={author}
@@ -116,6 +117,15 @@ export default function NewBook() {
               placeholder="Vem har skrivit den?"
               {...inputProps}
             />
+          </View>
+        )}
+        {step === 'rating' && (
+          <View style={styles.center}>
+            <Text style={styles.titleEcho} numberOfLines={2}>
+              {title}
+            </Text>
+            {/* Optional: the check saves with or without stars. The stars sparkle and tick as on the book page. */}
+            <StarRating value={rating} onChange={(n) => send({ type: 'SET_RATING', rating: n })} size={60} />
           </View>
         )}
       </Animated.View>

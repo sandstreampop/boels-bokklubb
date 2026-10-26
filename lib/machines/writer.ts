@@ -1,31 +1,37 @@
-// Writing a thought, full screen, like recording. Opens with the prompt, saves on done.
+// Writing a thought, full screen, like recording. Owns the question for the whole session.
 //
-//   idle ──START(prompt)──▶ writing ──DONE (text)──▶ saving ──▶ done ──RESET──▶ idle
-//                              │ DONE (empty)                                   ▲
-//                              └────────────────────────────────────────────────┘
+//   idle ──START──▶ writing.blank ──(text typed)──▶ writing.answering ──(text cleared)──▶ writing.blank
+//                      │ REROLL: a new question         REROLL is not accepted here
+//                      └──── DONE from either ────▶ done ──RESET──▶ idle
 //
-// There is no cancel: done with nothing typed just closes, done with text saves it. The prompt
-// is owned by the book machine (it is also what the wand rerolls) and passed in with START; the
-// one on screen at DONE is the one stored with the entry.
+// The invariant (docs/PRD-build-9.md §1): the question stored with her words is the one on screen
+// when she pressed done, and it cannot change once she has started. Both follow from the shape,
+// not from the screen: this machine holds the only copy of the prompt (picked at START, replaced
+// only by REROLL, which only `blank` accepts), the overlay asks `canReroll` to know whether to show
+// the wand lit, and the answer handed to the book machine is read from that copy at done. The
+// blank/answering pair is derived from the text by eventless transitions, so the lock can never
+// disagree with what she typed. tests/prompts.test.ts holds the machine to this.
+//
+// There is no cancel: done with nothing typed hands over empty text, which saves nothing.
 
-import { assign, fromPromise, setup } from 'xstate';
+import { assign, not, setup, type SnapshotFrom } from 'xstate';
 
-import { addTextEntry } from '@/lib/actions';
-import { captureError } from '@/lib/telemetry';
+import { pickPrompt } from '@/lib/prompts';
 
 type Input = { bookId: string };
 type Context = Input & { text: string; prompt: string | null };
-type Events = { type: 'START'; prompt: string | null } | { type: 'SET_TEXT'; text: string } | { type: 'DONE' } | { type: 'RESET' };
+type Events = { type: 'START' } | { type: 'REROLL' } | { type: 'SET_TEXT'; text: string } | { type: 'DONE' } | { type: 'RESET' };
+
+/** What the writer hands to the book machine: her words and the question they answer. */
+export type WrittenAnswer = { text: string; prompt: string | null };
 
 export const writerMachine = setup({
   types: { context: {} as Context, events: {} as Events, input: {} as Input },
-  actors: {
-    save: fromPromise(({ input }: { input: { bookId: string; text: string; prompt: string | null } }) =>
-      addTextEntry(input.bookId, input.text, input.prompt),
-    ),
-  },
   guards: {
-    hasText: ({ context }) => context.text.trim().length > 0,
+    hasText: ({ context }) => context.text.length > 0,
+  },
+  actions: {
+    pick: assign({ prompt: () => pickPrompt('write') }),
   },
 }).createMachine({
   id: 'writer',
@@ -33,20 +39,22 @@ export const writerMachine = setup({
   initial: 'idle',
   states: {
     idle: {
-      on: { START: { target: 'writing', actions: assign({ prompt: ({ event }) => event.prompt, text: '' }) } },
+      on: { START: { target: 'writing', actions: ['pick', assign({ text: '' })] } },
     },
     writing: {
+      initial: 'blank',
       on: {
         SET_TEXT: { actions: assign({ text: ({ event }) => event.text }) },
-        DONE: [{ guard: 'hasText', target: 'saving' }, { target: 'done' }],
+        DONE: 'done',
       },
-    },
-    saving: {
-      invoke: {
-        src: 'save',
-        input: ({ context }) => ({ bookId: context.bookId, text: context.text.trim(), prompt: context.prompt }),
-        onDone: 'done',
-        onError: { target: 'done', actions: ({ event, context }) => captureError('writer.save', event.error, { bookId: context.bookId }) },
+      states: {
+        blank: {
+          on: { REROLL: { actions: 'pick' } },
+          always: { guard: 'hasText', target: 'answering' },
+        },
+        answering: {
+          always: { guard: not('hasText'), target: 'blank' },
+        },
       },
     },
     done: {
@@ -54,3 +62,11 @@ export const writerMachine = setup({
     },
   },
 });
+
+export type WriterSnapshot = SnapshotFrom<typeof writerMachine>;
+
+/** The answer as the machine holds it: read in `done`, handed to the book machine as WRITING_DONE. */
+export const writtenAnswer = (s: WriterSnapshot): WrittenAnswer => ({ text: s.context.text.trim(), prompt: s.context.prompt });
+
+/** Whether the wand is lit: true only while the field is blank. The machine decides, the wand shows. */
+export const canReroll = (s: WriterSnapshot): boolean => s.can({ type: 'REROLL' });

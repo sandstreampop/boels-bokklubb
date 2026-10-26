@@ -1,7 +1,7 @@
 import { useMachine } from '@xstate/react';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -11,31 +11,37 @@ import { PromptLine } from './Prompt';
 import { RoundButton } from './RoundButton';
 import { Squishy } from './Squishy';
 import { Unicorn } from './Unicorn';
-import { CRAYONS, drawingMachine } from '@/lib/machines/drawing';
+import { canvasSide, crayonsBeside } from '@/lib/layout';
+import { CRAYONS, canReroll, drawingMachine, drawnAnswer, type DrawnAnswer } from '@/lib/machines/drawing';
 import { inspect } from '@/lib/machines/inspect';
 import { play } from '@/lib/sounds';
 import { colors, radius } from '@/lib/theme';
+import { MODAL_ORIENTATIONS, useLayout } from '@/lib/useLayout';
 
 const BRUSH = 10;
 const EXPORT_PX = 1024;
+/** What surrounds the canvas on a tablet: the prompt row, the crayons (when under it), the buttons, the gaps. */
+const CHROME = { top: 56, crayons: 100, bar: 72, gaps: 40, padding: 32, crayonColumn: 150 };
 
 type Props = {
   visible: boolean;
-  /** The draw prompt at the top, or null for a cover (no question, no wand). */
-  prompt: string | null;
-  onReroll: () => void;
-  /** Called once when she is done: the PNG file, or null if nothing was drawn. */
-  onDone: (uri: string | null) => void;
+  /** A cover for the book: no question, no wand. Otherwise a drawing entry with its question. */
+  cover: boolean;
+  /** Called once when she is done: the PNG file (null if nothing was drawn) and the question. */
+  onDone: (answer: DrawnAnswer) => void;
 };
 
 /**
  * Full-screen drawing, driven by lib/machines/drawing.ts. A square white canvas, the pastel
  * rainbow's six colours plus black as crayons, one brush width, undo one step at a time, done.
- * Strokes are SVG paths; done captures the canvas view to a PNG.
+ * Strokes are SVG paths; done captures the canvas view to a PNG. The machine owns the question:
+ * the wand sends REROLL and is lit only while the machine accepts it (a blank canvas). The
+ * square's size comes from lib/layout.ts: the phone's rule as before, a tablet fills the height it
+ * has, and a wide landscape stands the crayons beside it.
  */
-export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
+export function DrawingOverlay({ visible, cover, onDone }: Props) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const layout = useLayout();
   const canvasRef = useRef<ComponentRef<typeof View>>(null);
   const capture = useCallback(
     () =>
@@ -52,23 +58,29 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
     input: { capture },
     inspect,
   });
-  const { strokes, color } = state.context;
+  const { strokes, color, prompt } = state.context;
   const drawing = state.matches('drawing');
-  const side = Math.floor(Math.min(width - 32, height * 0.5));
+  const locked = !canReroll(state);
+  const beside = crayonsBeside(layout);
+  const side = canvasSide(layout.width, layout.height, {
+    vertical: insets.top + insets.bottom + CHROME.padding + CHROME.top + CHROME.bar + CHROME.gaps + (beside ? 0 : CHROME.crayons),
+    horizontal: CHROME.padding + (beside ? CHROME.crayonColumn : 0),
+  });
 
-  // The stroke under her finger, kept out of the machine until it is finished (one event per stroke).
+  // The stroke under her finger, kept out of the machine until it is finished (one event per
+  // stroke); the machine only hears that a finger is down (BEGIN), which locks the wand.
   const live = useRef('');
   const [liveD, setLiveD] = useState('');
 
   useEffect(() => {
-    if (visible) send({ type: 'START', prompt });
+    if (visible) send({ type: 'START', cover });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, send]);
 
   useEffect(() => {
     if (state.matches('done')) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-      onDone(state.context.uri);
+      onDone(drawnAnswer(state));
       send({ type: 'RESET' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +94,7 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
     shouldCancelWhenOutside: false,
     onBegin: (e) => {
       play('crayon');
+      send({ type: 'BEGIN' });
       live.current = `M ${pt(e.x, e.y)}`;
       setLiveD(live.current);
     },
@@ -100,39 +113,58 @@ export function DrawingOverlay({ visible, prompt, onReroll, onDone }: Props) {
     },
   });
 
+  const canvas = (
+    <GestureDetector gesture={pan}>
+      <View ref={canvasRef} collapsable={false} style={[styles.canvas, { width: side, height: side }]}>
+        <Svg width={side} height={side}>
+          {strokes.map((s, i) => (
+            <Path key={i} d={s.d} stroke={s.color} strokeWidth={BRUSH} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          ))}
+          {liveD !== '' && <Path d={liveD} stroke={color} strokeWidth={BRUSH} strokeLinecap="round" strokeLinejoin="round" fill="none" />}
+        </Svg>
+      </View>
+    </GestureDetector>
+  );
+
+  const crayons = (
+    <View style={[styles.crayons, beside && { flexDirection: 'column', maxWidth: undefined, maxHeight: side, width: CHROME.crayonColumn - 30 }]}>
+      {CRAYONS.map((c) => (
+        <Squishy
+          key={c}
+          onPress={() => send({ type: 'SET_COLOR', color: c })}
+          accessibilityRole="button"
+          accessibilityLabel="Färg"
+          hitSlop={6}
+          style={[styles.crayon, { backgroundColor: c }, c === color && styles.crayonOn]}
+        />
+      ))}
+    </View>
+  );
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => send({ type: 'DONE' })}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" supportedOrientations={MODAL_ORIENTATIONS} onRequestClose={() => send({ type: 'DONE' })}>
       {/* A Modal is its own native window on iOS, so gestures inside it need their own root view. */}
       <GestureHandlerRootView style={[styles.root, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
-        <View style={styles.top}>
-          {prompt !== null && <PromptLine prompt={prompt} onReroll={onReroll} color={colors.pinkDeep} wandColor={colors.pink} size={26} />}
+        <View style={[styles.top, layout.compact ? null : { maxWidth: layout.maxContent }]}>
+          {prompt !== null && (
+            <PromptLine prompt={prompt} onReroll={() => send({ type: 'REROLL' })} locked={locked} color={colors.pinkDeep} wandColor={colors.pink} size={26} />
+          )}
         </View>
 
-        <GestureDetector gesture={pan}>
-          <View ref={canvasRef} collapsable={false} style={[styles.canvas, { width: side, height: side }]}>
-            <Svg width={side} height={side}>
-              {strokes.map((s, i) => (
-                <Path key={i} d={s.d} stroke={s.color} strokeWidth={BRUSH} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              ))}
-              {liveD !== '' && <Path d={liveD} stroke={color} strokeWidth={BRUSH} strokeLinecap="round" strokeLinejoin="round" fill="none" />}
-            </Svg>
+        {/* The phone keeps its four stacked rows; a wide landscape puts the crayons beside the canvas. */}
+        {beside ? (
+          <View style={styles.beside}>
+            {canvas}
+            {crayons}
           </View>
-        </GestureDetector>
+        ) : (
+          <>
+            {canvas}
+            {crayons}
+          </>
+        )}
 
-        <View style={styles.crayons}>
-          {CRAYONS.map((c) => (
-            <Squishy
-              key={c}
-              onPress={() => send({ type: 'SET_COLOR', color: c })}
-              accessibilityRole="button"
-              accessibilityLabel="Färg"
-              hitSlop={6}
-              style={[styles.crayon, { backgroundColor: c }, c === color && styles.crayonOn]}
-            />
-          ))}
-        </View>
-
-        <View style={styles.bar}>
+        <View style={[styles.bar, layout.compact ? null : { maxWidth: layout.maxContent }]}>
           <RoundButton
             icon="undo"
             size={56}
@@ -161,6 +193,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     overflow: 'hidden',
   },
+  beside: { flexDirection: 'row', alignItems: 'center', gap: 30 },
   crayons: {
     flexDirection: 'row',
     flexWrap: 'wrap',

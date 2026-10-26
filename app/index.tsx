@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,23 +9,27 @@ import { RainbowBar, RainbowRing } from '@/components/Rainbow';
 import { RoundButton } from '@/components/RoundButton';
 import { Squishy } from '@/components/Squishy';
 import { UNICORN } from '@/components/Unicorn';
+import { gridFor } from '@/lib/layout';
 import { durations, springIn } from '@/lib/motion';
 import { useScreen } from '@/lib/screen';
 import { selectCompleteCount, useStore } from '@/lib/store';
 import { pullAllEntries, pullBooks } from '@/lib/sync';
 import { colors, fonts } from '@/lib/theme';
+import { useLayout } from '@/lib/useLayout';
 
-const GUTTER = 20;
-const GAP = 18;
-
+/**
+ * The shelf. The grid (columns, card width, gutter, gap) comes from lib/layout.ts: two columns on
+ * the phone as always, more on a tablet. The list is keyed by the column count because React
+ * Native requires a remount when numColumns changes (a rotation on the iPad; never on the phone).
+ */
 export default function Library() {
   const books = useStore((s) => s.books);
   const rainbowCount = useStore(selectCompleteCount);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const layout = useLayout();
+  const grid = gridFor(layout.width);
   const [refreshing, setRefreshing] = useState(false);
-  const cardWidth = Math.floor((Math.min(width, 700) - GUTTER * 2 - GAP) / 2);
   useScreen('library', { books: books.length });
   // Set piece 1: the shelf cascades in book by book at launch. A book mounted later (added, or
   // scrolled into view) springs in on its own, without the stagger.
@@ -52,13 +56,14 @@ export default function Library() {
   return (
     <View style={styles.root}>
       <FlatList
+        key={grid.columns}
         data={books}
         keyExtractor={(b) => b.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap: GAP, paddingHorizontal: GUTTER }}
+        numColumns={grid.columns}
+        columnWrapperStyle={{ gap: grid.gap, paddingHorizontal: grid.gutter }}
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 120, gap: 26 }}
         ListHeaderComponent={
-          <Animated.View entering={springIn()} style={styles.header}>
+          <Animated.View entering={springIn()} style={[styles.header, { paddingLeft: grid.gutter }]}>
             <Squishy onPress={() => router.push('/stats')} accessibilityRole="button" accessibilityLabel="Statistik" style={styles.titleRow}>
               <Text style={styles.title}>Boels bokklubb</Text>
               {rainbowCount > 0 && (
@@ -81,7 +86,7 @@ export default function Library() {
           <Animated.View entering={springIn(cascade(index))}>
             <BookCard
               book={item}
-              width={cardWidth}
+              width={grid.cardWidth}
               onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.id } })}
             />
           </Animated.View>
@@ -100,8 +105,8 @@ export default function Library() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  // The unicorn sits top right; the title row stops short of her.
-  header: { paddingLeft: GUTTER, paddingRight: UNICORN.clearance, paddingBottom: 6, alignItems: 'flex-start' },
+  // The unicorn sits top right; the title row stops short of her. The left padding is the gutter.
+  header: { paddingRight: UNICORN.clearance, paddingBottom: 6, alignItems: 'flex-start' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   title: { fontFamily: fonts.display, fontSize: 38, color: colors.text, lineHeight: 44 },
   count: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

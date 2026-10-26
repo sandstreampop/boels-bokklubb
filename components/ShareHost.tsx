@@ -7,6 +7,7 @@ import { RoundButton } from './RoundButton';
 import { ShareCard } from './ShareCard';
 import { shareActor } from '@/lib/machines/share';
 import { colors, fonts, radius } from '@/lib/theme';
+import { MODAL_ORIENTATIONS } from '@/lib/useLayout';
 
 /**
  * Mounted once at the root. While a card is being made it renders off screen for the capture;
@@ -29,7 +30,12 @@ export function ShareHost() {
           <ShareCard target={target} onReady={(capture) => shareActor.send({ type: 'READY', capture })} />
         </View>
       )}
-      <Modal visible={previewing} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => shareActor.send({ type: 'CANCEL' })}>
+      <Modal
+        visible={previewing}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        supportedOrientations={MODAL_ORIENTATIONS}
+        onRequestClose={() => shareActor.send({ type: 'CANCEL' })}>
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
           <Text style={styles.title}>Dela</Text>
           <View style={styles.imageWrap}>

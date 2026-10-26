@@ -1,0 +1,24 @@
+#!/bin/sh
+# Every push to main is a release (ship.yml ships what lands there), so every push to main runs
+# every gate first: node scripts/preflight.mjs. Installed by `npm install` through package.json's
+# `prepare` script (git config core.hooksPath .githooks). In GitHub Actions the gates have already
+# run as check.yml, which ship.yml needs before it ships, so the hook stands aside there.
+#
+# There is no way to skip it on purpose: a push that cannot pass the gates is not pushed.
+
+if [ -n "$GITHUB_ACTIONS" ]; then
+  exit 0
+fi
+
+to_main=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main) to_main=1 ;;
+  esac
+done
+
+if [ "$to_main" -eq 1 ]; then
+  echo "pre-push: a push to main is a release; running every gate (scripts/preflight.mjs)"
+  exec node scripts/preflight.mjs
+fi
+exit 0

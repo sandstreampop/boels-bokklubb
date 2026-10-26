@@ -2,10 +2,12 @@
 // only): the cover with its ring, the title and author, the stars as given, then the stream of
 // entries newest first. Each entry is components/EntryCard.tsx without the share button: the
 // prompt in muted type (a fill-in prompt wraps her words), her words verbatim, photos and drawings
-// as in the app, the date. Audio entries show the round play button with the duration and the
-// transcript under it; a pending transcript shows the two grey bars, a failed one nothing.
-// Playback is player.ts. Back goes to the library. The empty cover is not tappable.
+// as in the app, the date. Audio entries show the round play button with the duration and, only
+// while transcription is on (lib/features.ts), the transcript under it: a pending one as two grey
+// bars, a failed one as nothing. Playback is player.ts. Back goes to the library. The empty cover
+// is not tappable.
 
+import { features } from '../lib/features';
 import { isFillIn, splitFillIn } from '../lib/fillIn';
 import { formatDate, formatDuration } from '../lib/format';
 import { fetchBook, type Entry } from './api';
@@ -50,6 +52,7 @@ export function playerHtml(e: Entry): string {
 }
 
 function audioHtml(e: Entry): string {
+  if (!features.transcription) return `<div class="audio">${playerHtml(e)}</div>`;
   const transcript = e.transcript
     ? `<p class="transcript">${escape(e.transcript)}</p>`
     : e.transcript_status === 'failed'

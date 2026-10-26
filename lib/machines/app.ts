@@ -13,6 +13,7 @@ import { assign, fromPromise, setup } from 'xstate';
 
 import { inspect } from './inspect';
 import { startOutbox, wakeOutbox } from './outbox';
+import { features } from '@/lib/features';
 import { recoverStrandedRecording } from '@/lib/recording';
 import { loadState } from '@/lib/store';
 import { FAMILY_EMAIL, serverPassword, supabase } from '@/lib/supabase';
@@ -56,7 +57,7 @@ export const appMachine = setup({
       startOutbox();
       wakeOutbox();
       void recoverStrandedRecording();
-      sweepTranscriptions();
+      if (features.transcription) sweepTranscriptions();
     },
   },
   guards: {

@@ -11,43 +11,52 @@ import { PromptLine } from './Prompt';
 import { Squishy } from './Squishy';
 import { Unicorn } from './Unicorn';
 import { formatDuration } from '@/lib/format';
-import { info } from '@/lib/telemetry';
 import { inspect } from '@/lib/machines/inspect';
-import { recorderMachine } from '@/lib/machines/recorder';
+import { canReroll, recorderMachine, spokenAnswer, type SpokenAnswer } from '@/lib/machines/recorder';
+import { info } from '@/lib/telemetry';
 import { colors, fonts } from '@/lib/theme';
+import { MODAL_ORIENTATIONS, useLayout } from '@/lib/useLayout';
 
 type Props = {
   bookId: string;
   visible: boolean;
-  /** Called with the finished file. Never called with nothing: there is no cancel. */
-  onDone: (uri: string, durationMs: number) => void;
+  /** Called with the finished file and the question it answers. Never called with nothing: there is no cancel. */
+  onDone: (answer: SpokenAnswer) => void;
   onUnavailable: () => void;
   /** She closed the mode before pressing record: nothing to save. */
   onSkip: () => void;
-  /** The question she is answering, shown under the timer. The wand asks the owner for a new one. */
-  prompt: string | null;
-  onReroll: () => void;
 };
 
 /**
  * Full-screen recording, driven by lib/machines/recorder.ts. Opens with the prompt and one record
  * button; recording starts when she presses it, and from then on every tap anywhere stops and
- * saves. Before that, a tap outside the button closes the mode. Backgrounding keeps recording
- * (background audio mode), and a marker file means a crash still produces an entry on next launch.
+ * saves. Before that, a tap outside the button closes the mode. The machine owns the question: the
+ * wand sends REROLL and is lit only before the press. Backgrounding keeps recording (background
+ * audio mode), and a marker file means a crash still produces an entry on next launch.
  */
-export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip, prompt, onReroll }: Props) {
+export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip }: Props) {
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
     directory: 'document',
   });
   const status = useAudioRecorderState(recorder, 250);
   const insets = useSafeAreaInsets();
+  const layout = useLayout();
   const [state, send] = useMachine(recorderMachine, {
     input: { bookId, recorder },
     inspect,
   });
   const recording = state.matches('recording');
-  const ready = state.matches('idle');
+  // `closed` counts as ready too: the frame between the Modal appearing and OPEN arriving shows the button, not the mic.
+  const ready = state.matches('idle') || state.matches('closed');
+  const { prompt } = state.context;
+  const locked = !canReroll(state);
+
+  // The mode opening picks the question; closing before the press forgets it. CLOSE is only
+  // accepted in idle, so a mode that is saving is never torn down from here.
+  useEffect(() => {
+    send({ type: visible ? 'OPEN' : 'CLOSE' });
+  }, [visible, send]);
 
   const pulse = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({
@@ -55,10 +64,10 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip
     opacity: 2 - pulse.value,
   }));
 
-  // The record button starts the machine. START is only accepted in idle, so this cannot double-start.
+  // The record button arms the machine. RECORD is only accepted in idle, so this cannot double-start.
   const start = () => {
     info('recording.armed', { bookId });
-    send({ type: 'START', prompt });
+    send({ type: 'RECORD' });
   };
 
   // Pulse and tick once we are really recording.
@@ -77,12 +86,12 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.isRecording]);
 
-  // Hand the result to the book page and reset for next time.
+  // Hand the answer to the book page and reset for next time.
   useEffect(() => {
     if (state.matches('done')) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-      const { uri, durationMs } = state.context;
-      if (uri) onDone(uri, durationMs);
+      const answer = spokenAnswer(state);
+      if (answer) onDone(answer);
       else onUnavailable();
       send({ type: 'RESET' });
     } else if (state.matches('unavailable')) {
@@ -98,20 +107,30 @@ export function RecorderOverlay({ bookId, visible, onDone, onUnavailable, onSkip
   const tapAnywhere = () => (ready ? onSkip() : stop());
 
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={tapAnywhere}>
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" supportedOrientations={MODAL_ORIENTATIONS} onRequestClose={tapAnywhere}>
       <Pressable
         style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 }]}
         onPress={tapAnywhere}
         accessibilityLabel={ready ? 'Stäng' : 'Stoppa och spara'}
       >
-        <View style={styles.top}>
+        {/* On a tablet the question stays a readable column instead of one line across the screen. */}
+        <View style={[styles.top, layout.compact ? null : { maxWidth: layout.maxContent }]}>
           {/* She sits beside the timer and sways while the mic is open; her tap target is off here. */}
           <View style={styles.timerRow}>
             <Unicorn pose="recording" placement="inline" />
             <Text style={[styles.timer, ready && styles.timerIdle]}>{formatDuration(seconds * 1000)}</Text>
           </View>
           {prompt !== null && (
-            <PromptLine prompt={prompt} onReroll={onReroll} color={colors.white} wandColor={colors.white} size={30} align="center" style={styles.prompt} />
+            <PromptLine
+              prompt={prompt}
+              onReroll={() => send({ type: 'REROLL' })}
+              locked={locked}
+              color={colors.white}
+              wandColor={colors.white}
+              size={30}
+              align="center"
+              style={styles.prompt}
+            />
           )}
         </View>
         <View style={styles.center}>

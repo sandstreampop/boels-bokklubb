@@ -7,6 +7,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTim
 import { Icon } from './Icon';
 import { SparkBurst } from './SparkBurst';
 import { Squishy } from './Squishy';
+import { features } from '@/lib/features';
 import { formatDate, formatDuration } from '@/lib/format';
 import { useMediaUri } from '@/lib/media';
 import { startShare } from '@/lib/machines/share';
@@ -104,14 +105,16 @@ function AudioBody({ entry, autoplay }: { entry: Entry; autoplay: boolean }) {
       ) : (
         <PlayerShell durationMs={entry.duration_ms ?? 0} />
       )}
-      {entry.transcript ? (
-        <Text style={styles.transcript}>{entry.transcript}</Text>
-      ) : entry.transcript_status === 'failed' ? null : (
-        <View style={styles.transcriptPending}>
-          <View style={[styles.pendingBar, { width: '72%' }]} />
-          <View style={[styles.pendingBar, { width: '48%' }]} />
-        </View>
-      )}
+      {/* Transcription is a feature flag (lib/features.ts); off, her voice is the whole answer. */}
+      {features.transcription &&
+        (entry.transcript ? (
+          <Text style={styles.transcript}>{entry.transcript}</Text>
+        ) : entry.transcript_status === 'failed' ? null : (
+          <View style={styles.transcriptPending}>
+            <View style={[styles.pendingBar, { width: '72%' }]} />
+            <View style={[styles.pendingBar, { width: '48%' }]} />
+          </View>
+        ))}
     </View>
   );
 }

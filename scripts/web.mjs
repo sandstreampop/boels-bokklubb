@@ -21,7 +21,9 @@ const DIST = join(WEB, 'dist');
 const CONFIG = join(WEB, 'vite.config.mts');
 const BASE = '/boels-bokklubb/';
 /** The only modules under lib/ the page may import: no React Native, no Expo, no store. */
-const ALLOWED_LIB = ['theme', 'format', 'fillIn'];
+const ALLOWED_LIB = ['theme', 'format', 'fillIn', 'features'];
+/** lib/features.ts, read as text: the check must expect what the page shows (transcripts only while on). */
+const TRANSCRIPTION = /transcription:\s*true\b/.test(readFileSync(join(ROOT, 'lib', 'features.ts'), 'utf8').replace(/^\s*\/\/.*$|\/\*[\s\S]*?\*\//gm, ''));
 
 const [mode = 'check', ...rest] = process.argv.slice(2);
 const log = (msg) => console.log(`\n▶ ${msg}`);
@@ -310,8 +312,8 @@ async function check() {
       expect((await count(page, '.entry.text .prompt-inline')) === 2, 'a fill-in prompt wraps her words');
       expect((await count(page, '.entry.text .prompt')) === kinds('text').filter((e) => e.prompt && !e.prompt.includes('___')).length, 'a plain prompt above her words');
       expect((await count(page, '.entry.audio .player')) === kinds('audio').length, 'a player on every recording');
-      expect((await count(page, '.entry.audio .transcript')) === kinds('audio').filter((e) => e.transcript).length, 'the transcript under a done recording');
-      expect((await count(page, '.entry.audio .transcript-pending')) === kinds('audio').filter((e) => !e.transcript && e.transcript_status !== 'failed').length, 'two grey bars under a pending one');
+      expect((await count(page, '.entry.audio .transcript')) === (TRANSCRIPTION ? kinds('audio').filter((e) => e.transcript).length : 0), 'the transcript under a done recording, only while transcription is on');
+      expect((await count(page, '.entry.audio .transcript-pending')) === (TRANSCRIPTION ? kinds('audio').filter((e) => !e.transcript && e.transcript_status !== 'failed').length : 0), 'two grey bars under a pending one, only while transcription is on');
       expect((await count(page, '.entry.photo .picture img')) === kinds('photo').length, 'the photo');
       expect((await count(page, '.entry.drawing .picture.drawing img')) === kinds('drawing').length, 'the drawing, square');
       expect((await count(page, '.entry time')) === fb.entries.length, 'a date on every entry');

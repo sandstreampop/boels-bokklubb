@@ -13,22 +13,31 @@ Start there. Telemetry is for finding bugs, never for measuring usage.
 ## Product rules, decided with Viktor
 
 - Four screens only: library (grid of books, one plus button, the title opens the stats), add book
-  (a three-step wizard, one thing per screen with a progress strip: picture, title, author; title
-  required, author and cover optional; no drawing here, a cover is drawn on the book page), book page (mic, pencil, camera, crayon, 1 to 5 star
-  rating, stream of entries), stats (six totals, no time axis). Writing and drawing are full-screen
-  modes like recording.
+  (a four-step wizard, one thing per screen with a progress strip: picture, title, author, stars;
+  title required, the rest optional; the stars step is there so she remembers; no drawing here, a
+  cover is drawn on the book page), book page (mic, pencil, camera, crayon, 1 to 5 star rating,
+  stream of entries), stats (six totals, no time axis). Writing and drawing are full-screen modes
+  like recording.
 - The stream is append-only. Nothing in the app edits or deletes. Fixes happen via Supabase.
-- No autocorrect, no spellcheck anywhere, and the keyboard always opens in caps: she writes in
-  capitals. Her spelling is the point. Every TextInput sets
-  `autoCorrect={false} spellCheck={false} autoCapitalize="characters"`.
+- No autocorrect, no spellcheck anywhere, and she writes in capitals: her spelling is the point.
+  Every field she writes in is `components/CapsInput.tsx`, which uppercases in software (the
+  iPad keyboard ignores `autoCapitalize="characters"`) and sets the no-autocorrect props.
+- The app runs on the iPad too, portrait and landscape, since build 9 (docs/PRD-build-9.md). The
+  phone is untouched: every size comes from `lib/layout.ts`, whose `compact` class is the phone,
+  and `scripts/layout-check.mjs` refuses a change that moves a pixel there.
 - Recording: the mic opens the recording mode with the prompt and one record button; recording starts
   when she presses that button, and from then on any tap stops and saves, no cancel path. Before
   the button is pressed a tap outside it just closes the mode. Audio is written to the document
   directory and a marker file lets a crash still produce an entry on next launch.
-- Transcription is a bonus. Audio is always kept. Swedish is hinted, not forced.
+- Transcription is off since 2026-10-26 (`features.transcription` in `lib/features.ts`): the text
+  was often wrong, so her voice is the answer. Audio is always kept. The function and the columns
+  stay; the flag brings it back. Nothing shows a transcript while it is off, old ones included.
 - Minimal text in the UI, icons over labels, no explaining prose. Swedish where words are needed.
 - Prompts are text, one random of fifty per pool, stored on the entry. No voice prompts. The magic
-  wand rerolls a prompt anywhere one is shown.
+  wand rerolls a prompt anywhere one is shown, until she has started answering (a letter typed, a
+  stroke drawn, record pressed): then it fades and the question stays. The question stored is
+  always the one on screen when she finished; this is an invariant of the machines, not of the
+  screens (see Architecture), and tests/prompts.test.ts holds it.
 - Share is a visible share button on every entry card and on the stats. It never sends at once: a
   sheet previews the card with Share and Cancel first.
 - Photos are taken with the camera, never chosen from the gallery.
@@ -81,10 +90,18 @@ build 1 impossible by construction.
 - `machines/app.ts` boot, session, sign-in. Provided at the root as `AppActor`.
 - `machines/outbox.ts` the durable upload queue (one module-level actor; `enqueue` from actions).
 - `machines/recorder.ts` permission → prepare → recording → stopping → done. Owned by RecorderOverlay.
-- `machines/newBook.ts` the add-book form. `machines/book.ts` the book page: write, photo, record, rate,
-  and the prompts (it owns what the wand rerolls). `machines/writer.ts` full-screen writing.
+- `machines/newBook.ts` the add-book wizard (picture, title, author, stars). `machines/book.ts` the
+  book page: which mode is open, photo, rate, and the saves. `machines/writer.ts`, `drawing.ts`
+  and `recorder.ts` are the full-screen modes; each picks and owns its own prompt for the session
+  (REROLL is accepted only in its unlocked substate, derived from the text, the strokes or the
+  press by eventless transitions) and ends with a typed answer (`WrittenAnswer`, `DrawnAnswer`,
+  `SpokenAnswer`) that carries the prompt. The book machine's done events require that answer, so
+  a save without the question on screen does not compile. `canReroll(snapshot)` is what lights the
+  wand; the screen never decides. No other copy of a prompt exists anywhere.
 - `machines/inspect.ts` turns every transition into a telemetry breadcrumb and reports actor errors.
   Pass `{ inspect }` to every `useMachine`, `createActor` and `createActorContext`.
+- `tests/*.test.ts` (vitest, `npm test`) drive the machines with events under Node, every device
+  module mocked. An invariant that matters gets a test there, in the same commit as the rule.
 
 Rules: side effects live in machine actions or invoked promise actors, never in `useEffect` chains
 (the only allowed effects are bridging a machine to a prop or a native hook, as RecorderOverlay does).
@@ -94,9 +111,14 @@ file header comment. Reads from the store go through `useStore(selector)` and th
 ## Layout
 
 - `app/` routes: `index.tsx` library, `book/new.tsx`, `book/[id].tsx`, `stats.tsx`, `_layout.tsx` auth gate.
-- `components/` UI. `lib/` data: `store.ts` local-first state, `machines/` flows (see above),
-  `actions.ts` what machines call to create things, `media.ts` local file cache, `sync.ts` server
-  pull, `recording.ts` crash recovery, `telemetry.ts` observability, `prompts.ts` the three pools.
+- `components/` UI (`CapsInput.tsx` is every field she writes in). `lib/` data: `store.ts`
+  local-first state, `machines/` flows (see above), `actions.ts` what machines call to create
+  things, `media.ts` local file cache, `sync.ts` server pull, `recording.ts` crash recovery,
+  `telemetry.ts` observability, `prompts.ts` the three pools, `features.ts` the flags (no imports;
+  the web reads it too), `layout.ts` every size for every window (pure; `compact` is the phone)
+  and `useLayout.ts` its hook plus `MODAL_ORIENTATIONS` for every Modal.
+- `tests/` the machine tests (vitest). `scripts/preflight.mjs` every gate in one run; installed as
+  `.githooks/pre-push` by `npm install` (the `prepare` script), so a push to main cannot skip it.
 - `supabase/migrations` schema and storage policies. `supabase/functions/transcribe` edge function.
 - `app.config.ts` the Expo config (refuses to evaluate without the Supabase values).
 - `scripts/setup.mjs` provisions everything from environment secrets. `scripts/eas-drive.py` answers
@@ -127,9 +149,13 @@ loads or plays.
 
 ## Shipping: sessions push, CI ships
 
-A session's job ends at "typecheck, lint, doctor, changelog line, commit, push". A push to main
-runs `.github/workflows/ship.yml`: first `check.yml` (typecheck, lint, expo-doctor, the changelog
-gate, the bundle proof), then `node scripts/ship.mjs auto`, which ships an over-the-air update or,
+A session's job ends at "preflight, changelog line, commit, push". Every push to main is a
+release, so the committed git hook `.githooks/pre-push` runs `node scripts/preflight.mjs`
+(typecheck, lint, `npm test`, the phone-layout check, the changelog gate) and refuses the push
+otherwise; `npm install` installs the hook through `prepare`. The manual escape hatches run the
+same gates with `--full` (plus expo-doctor and the web check) before they ship. A push to main
+runs `.github/workflows/ship.yml`: first `check.yml` (the same gates as steps, plus expo-doctor,
+the bundle proof and the web check), then `node scripts/ship.mjs auto`, which ships an over-the-air update or,
 when package.json, package-lock.json, app.config.ts, eas.json or a migration changed (or the subject
 says `[native]`), a TestFlight build with migrations applied first. Runs queue, so two sessions can
 no longer publish each other's half-done tree. Sessions do not run `npm run update` or
@@ -160,6 +186,9 @@ no longer publish each other's half-done tree. Sessions do not run `npm run upda
 
     npm run typecheck   # tsc --noEmit
     npm run lint        # expo lint
+    npm test            # the machine tests (vitest, Node, devices mocked)
+    npm run preflight   # every gate before a release; the pre-push hook runs this on a push to main
+    node --no-warnings --experimental-strip-types scripts/layout-check.mjs   # the phone layout is unchanged
     npm run logs        # tail app telemetry (--since 2h, --level warn, --session <id>, --sessions, --follow)
     npm run migrate     # apply supabase/migrations through the Management API
     npm run setup       # provision Supabase, EAS, GitHub secrets, TestFlight group (needs secrets)

@@ -1,5 +1,6 @@
 // What the screens call. Each action updates the local store immediately and queues the server work.
 
+import { features } from './features';
 import { dirs, extensionOf, keepFile } from './files';
 import { uuid } from './ids';
 import { enqueue } from './machines/outbox';
@@ -7,12 +8,14 @@ import { markFresh, patchBook, rememberLocalMedia, upsertBook, upsertEntry } fro
 import { traced } from './telemetry';
 import type { Book, Entry } from './types';
 
-export function addBook(input: { title: string; author: string | null; coverUri: string | null }): Promise<Book> {
+type NewBook = { title: string; author: string | null; coverUri: string | null; rating: number | null };
+
+export function addBook(input: NewBook): Promise<Book> {
   const id = uuid();
-  return traced('action.addBook', { id, title: input.title, hasCover: !!input.coverUri }, () => addBookInner(id, input));
+  return traced('action.addBook', { id, title: input.title, hasCover: !!input.coverUri, rating: input.rating }, () => addBookInner(id, input));
 }
 
-async function addBookInner(id: string, input: { title: string; author: string | null; coverUri: string | null }): Promise<Book> {
+async function addBookInner(id: string, input: NewBook): Promise<Book> {
   let cover_path: string | null = null;
   let coverLocalUri: string | null = null;
   if (input.coverUri) {
@@ -27,7 +30,7 @@ async function addBookInner(id: string, input: { title: string; author: string |
     title: input.title,
     author: input.author,
     cover_path,
-    rating: null,
+    rating: input.rating,
     pending: true,
   };
   upsertBook(book);
@@ -165,7 +168,8 @@ async function addAudioEntryInner(
     media_path,
     duration_ms: durationMs,
     transcript: null,
-    transcript_status: 'pending',
+    // Transcription is a feature flag (lib/features.ts): off means the row never waits for one.
+    transcript_status: features.transcription ? 'pending' : 'none',
     pending: true,
   };
   if (!createdAt) markFresh(entry.id);

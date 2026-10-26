@@ -1,7 +1,7 @@
 import { useMachine } from '@xstate/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,6 +49,14 @@ export default function NewBook() {
 
   const next = () => send({ type: 'NEXT' });
 
+  // This screen is a page sheet, which starts below the top of the window (about 55 points on a
+  // phone, more on an iPad). KeyboardAvoidingView pads from its own frame, not the window, so
+  // without this offset the keyboard covers that much of the bar. Measured in the window on every
+  // layout (a rotation moves the sheet). A bridge from a native measurement, one of the allowed effects.
+  const root = useRef<ComponentRef<typeof View>>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const measure = () => root.current?.measureInWindow((_x, y) => setKeyboardOffset(Math.max(0, Math.round(y))));
+
   // Capitals, no autocorrect: CapsInput. The rest is the wizard's.
   const inputProps = {
     returnKeyType: 'done' as const,
@@ -59,7 +67,8 @@ export default function NewBook() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <View ref={root} collapsable={false} style={styles.root} onLayout={measure}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={keyboardOffset} style={styles.root}>
       <View style={[styles.top, { paddingTop: Platform.OS === 'ios' ? 14 : insets.top + 12 }]}>
         <RoundButton
           icon={index === 0 ? 'close' : 'back'}
@@ -142,6 +151,7 @@ export default function NewBook() {
         bottomInset={insets.bottom}
       />
     </KeyboardAvoidingView>
+    </View>
   );
 }
 

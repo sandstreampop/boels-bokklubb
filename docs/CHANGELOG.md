@@ -6,11 +6,6 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
-- The check is back on top of the keyboard when she writes, on a pink bar across the bottom that
-  the keyboard lifts, and the add-book screen shows its close button and its circles again: the
-  previous update's bar failed to appear in the writer and covered the top of the add-book screen.
-  The password screen is as before.
-
 ## 1.2.0 (build 9, 2026-10-26, TestFlight)
 
 What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan
@@ -28,6 +23,13 @@ bokstav och se att staven slocknar. På telefonen ska inget se annorlunda ut.
 - Every letter she types is a capital, on the iPad too, where the keyboard ignored the hint.
 - Recordings show no transcript any more, old ones included, in the app and on the web: the text
   was often wrong, so her voice is the answer.
+
+### Update 01a1798b (2026-10-26)
+
+- The check is back on top of the keyboard when she writes, on a pink bar across the bottom that
+  the keyboard lifts, and the add-book screen shows its close button and its circles again: the
+  previous update's bar failed to appear in the writer and covered the top of the add-book screen.
+  The password screen is as before.
 
 ### Update 01a17979 (2026-10-26)
 

@@ -6,6 +6,10 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+- A big check sits on top of the keyboard wherever she writes, and the next arrow in the add-book
+  steps, so the way to finish is always in the same place; on the phone the button under the text
+  steps aside while the keyboard is up. The password's number pad gets its arrow the same way.
+
 ## 1.2.0 (build 9, 2026-10-26, TestFlight)
 
 What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan

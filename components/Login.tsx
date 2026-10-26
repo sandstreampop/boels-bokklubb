@@ -3,10 +3,14 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } fro
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Icon } from './Icon';
+import { KeyboardDone } from './KeyboardDone';
 import { RainbowBar } from './Rainbow';
 import { RoundButton } from './RoundButton';
 import { AppActor } from '@/lib/machines/app';
 import { colors, fonts, radius } from '@/lib/theme';
+
+/** The number pad has no return key at all; the send arrow rides on top of it instead. */
+const SEND_BAR = 'login-send';
 
 /** One field. A grown-up types the family password once per phone. */
 export function Login() {
@@ -53,10 +57,12 @@ export function Login() {
             returnKeyType="go"
             onSubmitEditing={submit}
             editable={!busy}
+            inputAccessoryViewID={SEND_BAR}
           />
           <RoundButton icon="send" size={44} onPress={submit} disabled={!canSubmit} label="Logga in" />
         </Animated.View>
       </View>
+      <KeyboardDone id={SEND_BAR} icon="send" label="Logga in" onPress={submit} disabled={!canSubmit} />
     </KeyboardAvoidingView>
   );
 }

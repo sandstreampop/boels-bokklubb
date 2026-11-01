@@ -6,6 +6,12 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+What to test: öppna appen, spela in, skriv, rita och ta en bild i en bok; allt ska fungera precis
+som förut.
+
+- A fresh TestFlight build in place of the monthly refresh, on Expo's latest fixes; nothing new to
+  see.
+
 ## 1.2.0 (build 9, 2026-10-26, TestFlight)
 
 What to test: på iPaden, vrid plattan på varje skärm och öppna mikrofonen, pennan och kritan

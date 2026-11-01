@@ -6,6 +6,8 @@ first eight characters of what `npm run logs` shows in the `app` column.
 
 ## Unreleased
 
+## 1.3.0 (build 10, 2026-11-01, TestFlight)
+
 What to test: öppna appen, spela in, skriv, rita och ta en bild i en bok; allt ska fungera precis
 som förut.
 

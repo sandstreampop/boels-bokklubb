@@ -31,7 +31,7 @@ const config: ExpoConfig =   {
     "name": "Boels bokklubb",
     "slug": "boels-bokklubb",
     "scheme": "boelsbokklubb",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

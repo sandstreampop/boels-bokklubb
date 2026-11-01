@@ -8,7 +8,11 @@
 //   npm run update                          over-the-air update to the production channel (about a minute)
 //   npm run build:ios                       native build, submit, wait, write "What to Test" (about 40 minutes)
 //   npm run build:ios -- --no-wait          return once the build is queued; "What to Test" is then not written
-//   node scripts/ship.mjs build --refresh   the monthly rebuild: adds "Monthly refresh, nothing new" when Unreleased is empty
+//   node scripts/ship.mjs refresh           the TestFlight guard (daily in CI): rebuild if Apple's newest live build is due (scripts/refresh.mjs)
+//   node scripts/ship.mjs refresh --check   only the decision: prints it, writes due=true|false to GITHUB_OUTPUT
+//   node scripts/ship.mjs build --refresh   the rebuild itself: takes Expo's patch releases when every gate passes with them
+//                                           (takeExpoPatches), proves the bundle, adds "Monthly refresh, nothing new"
+//                                           when Unreleased is empty
 //   node scripts/ship.mjs prove             only the bundle proof (check.yml runs this on every push)
 //   node scripts/ship.mjs submit            resubmit the latest finished build
 //   node scripts/ship.mjs web               the web version alone: deploy the feed function, build the page, changelog
@@ -37,9 +41,11 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { setWhatsNew, waitForProcessedBuild } from './asc.mjs';
+import { builds as ascBuilds, setWhatsNew, waitForProcessedBuild } from './asc.mjs';
 import { ROOT, asPlainText, changesSince, hasWhatToTest, latestBuild, release, unreleased } from './changelog.mjs';
 import { dotenv, eas, easEnv } from './eas.mjs';
+import { doctor } from './doctor.mjs';
+import { refreshDecision } from './refresh.mjs';
 import { deployFunction, migrate } from './supabase.mjs';
 
 const args = process.argv.slice(2);
@@ -47,6 +53,8 @@ const [mode = 'build'] = args;
 const flag = (name) => args.includes(`--${name}`);
 const APP_CONFIG = join(ROOT, 'app.config.ts');
 const REFRESH_LINE = '- Monthly refresh, nothing new.';
+const PATCH_LINE = "- Monthly refresh with Expo's latest fixes; nothing new to see.";
+const PACKAGE_FILES = ['package.json', 'package-lock.json'];
 
 const log = (msg) => console.log(`\n▶ ${msg}`);
 const ok = (msg) => console.log(`  ✓ ${msg}`);
@@ -79,15 +87,27 @@ function appleEnv() {
 
 // ---- helpers -------------------------------------------------------------------------------------
 
+/** eas-cli commands that only read, so a failure is retried: one network blip must not end a 40-minute ship. */
+const EAS_READS = new Set(['build:view', 'build:version:get', 'build:list']);
+
 /** eas-cli with --json: the JSON from stdout, everything else shown to the terminal. `build:view` has no --non-interactive. */
 function easJson(cliArgs, extra = {}, flags = ['--json', '--non-interactive']) {
-  const r = spawnSync('npx', ['eas-cli@latest', ...cliArgs, ...flags], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    env: easEnv(extra),
-    stdio: ['inherit', 'pipe', 'inherit'],
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const attempts = EAS_READS.has(cliArgs[0]) ? 5 : 1;
+  let r;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    r = spawnSync('npx', ['eas-cli@latest', ...cliArgs, ...flags], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: easEnv(extra),
+      stdio: ['inherit', 'pipe', 'inherit'],
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    if (r.status === 0) break;
+    if (attempt < attempts) {
+      console.log(`  eas ${cliArgs[0]} failed (exit ${r.status}); retrying in ${15 * attempt} s (${attempt}/${attempts - 1})`);
+      spawnSync('sleep', [String(15 * attempt)]);
+    }
+  }
   if (r.status !== 0) fail(`eas ${cliArgs[0]} failed (exit ${r.status}); see the output above`);
   const text = r.stdout.trim();
   try {
@@ -219,7 +239,8 @@ function proveBundle() {
  */
 function preflight() {
   log('Preflight: every gate before anything is released');
-  const r = spawnSync('node', [join(ROOT, 'scripts', 'preflight.mjs'), '--full'], { cwd: ROOT, stdio: 'inherit' });
+  const scope = flag('refresh') ? '--refresh' : '--full';
+  const r = spawnSync('node', [join(ROOT, 'scripts', 'preflight.mjs'), scope], { cwd: ROOT, stdio: 'inherit' });
   if (r.status !== 0) fail('preflight failed; nothing was shipped');
 }
 
@@ -246,8 +267,46 @@ function update() {
   push();
 }
 
+/**
+ * Expo's patch releases for the SDK the app is on, taken by every refresh without anyone deciding.
+ * Kept only if the lock file installs, expo-doctor finds every package on the SDK's latest patch,
+ * every gate passes and the bundle proof holds; otherwise put back, and the refresh rebuilds the
+ * tree main already shipped (a warning, not a failure: the family's build must not wait on Expo).
+ * Never a new SDK: `expo install --fix` stays within the installed one. Returns the files to commit.
+ */
+function takeExpoPatches() {
+  log("Expo: the SDK's latest patch releases");
+  const run = (cmd, cmdArgs) => spawnSync(cmd, cmdArgs, { cwd: ROOT, stdio: 'inherit', env: { ...process.env, CI: '1' } }).status === 0;
+  if (git('status', '--porcelain', '--', ...PACKAGE_FILES)) fail('package.json or package-lock.json has uncommitted changes; the refresh builds what is on main');
+  run('npx', ['expo', 'install', '--fix']);
+  const changed = git('status', '--porcelain', '--', ...PACKAGE_FILES);
+  if (!changed) {
+    ok('none; the app is on the latest');
+    return [];
+  }
+  console.log(git('diff', '--', 'package.json'));
+  const kept =
+    run('npm', ['ci']) &&
+    doctor({ versions: true }) === 0 &&
+    run('node', [join(ROOT, 'scripts', 'preflight.mjs'), '--full']) &&
+    run('node', ['--no-warnings', join(ROOT, 'scripts', 'ship.mjs'), 'prove']);
+  if (!kept) {
+    git('checkout', '--', ...PACKAGE_FILES);
+    if (!run('npm', ['ci'])) fail('npm ci of the shipped lock file failed after putting the patch releases back');
+    console.log("::warning title=Expo patch releases not taken::A gate failed with Expo's latest patch releases (see above); this refresh rebuilds the shipped tree, the next one tries again.");
+    return [];
+  }
+  const path = join(ROOT, 'docs', 'CHANGELOG.md');
+  writeFileSync(path, readFileSync(path, 'utf8').replace('## Unreleased\n', `## Unreleased\n\n${PATCH_LINE}\n`));
+  ok("taken: every gate passes with Expo's latest patch releases");
+  return PACKAGE_FILES;
+}
+
 async function build() {
+  const patched = flag('refresh') ? takeExpoPatches() : [];
   if (mode !== 'auto') preflight();
+  // ship.yml proves the bundle in check.yml before shipping; a refresh has no such job.
+  if (flag('refresh')) proveBundle();
   const apple = appleEnv();
   if (flag('refresh') && !unreleased()) {
     const path = join(ROOT, 'docs', 'CHANGELOG.md');
@@ -270,7 +329,7 @@ async function build() {
   ok(`changelog: ${title}`);
   // Commit first so the build is of exactly this tree; push once EAS has confirmed the number.
   const message = `Changelog: ${version} (build ${buildNumber})`;
-  commit(message, ['app.config.ts', 'docs/CHANGELOG.md']);
+  commit(message, ['app.config.ts', 'docs/CHANGELOG.md', ...patched]);
 
   log(`EAS: building ${version} (${buildNumber}) for iOS and submitting to TestFlight`);
   const started = easJson(['build', '--platform', 'ios', '--profile', 'production', '--auto-submit', '--no-wait'], apple);
@@ -401,6 +460,30 @@ async function auto() {
   else update();
 }
 
+/**
+ * The TestFlight guard: asks Apple for its builds and rebuilds when the newest live one is due
+ * (scripts/refresh.mjs). Idempotent, so CI runs it every day and a failed day is simply retried
+ * the next: the state it reads only changes when a build reaches Apple.
+ */
+async function refresh() {
+  log('App Store Connect: the newest live TestFlight build');
+  const d = refreshDecision(await ascBuilds({ limit: 20 }), Date.now());
+  ok(d.reason);
+  if (d.alarm) {
+    console.log(
+      `::error title=TestFlight expires in ${d.daysLeft} days::${d.reason}. The daily refresh has been failing; ` +
+        'read the failed TestFlight refresh runs, fix the cause, or run the workflow by hand.',
+    );
+  }
+  if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `due=${d.due}\n`, { flag: 'a' });
+  if (flag('check') || !d.due) {
+    if (!d.due) console.log('Nothing to do today.');
+    return;
+  }
+  args.push('--refresh');
+  await build();
+}
+
 function submit() {
   process.exit(eas(['submit', '--platform', 'ios', '--profile', 'production', '--latest', '--non-interactive'], appleEnv()));
 }
@@ -409,6 +492,7 @@ function submit() {
   if (mode === 'auto') await auto();
   else if (mode === 'update') update();
   else if (mode === 'build') await build();
+  else if (mode === 'refresh') await refresh();
   else if (mode === 'prove') proveBundle();
   else if (mode === 'submit') submit();
   else if (mode === 'web') await web();

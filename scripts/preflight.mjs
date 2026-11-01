@@ -7,7 +7,7 @@
 //   .github/workflows/check.yml the same gates as separate steps, which ship.yml needs before shipping
 //
 //   node scripts/preflight.mjs          typecheck, lint, tests, the phone-layout check, the changelog gate
-//   node scripts/preflight.mjs --full   also expo-doctor and, when web/ changed since the last ship, the web check
+//   node scripts/preflight.mjs --full   also expo-doctor (scripts/doctor.mjs: the tree, not Expo's release calendar) and, when web/ changed since the last ship, the web check
 //
 // There is no flag to skip a gate: a release that cannot pass them is not released. Fix the cause.
 
@@ -25,7 +25,7 @@ const gates = [
   ['a changelog line for every change Boel or a relative sees', 'node', ['scripts/changelog.mjs', 'check']],
 ];
 if (full) {
-  gates.push(['expo-doctor', 'npx', ['expo-doctor']]);
+  gates.push(['expo-doctor', 'node', ['scripts/doctor.mjs']]);
   if (changesSince().web.length) gates.push(['the web version builds and shows its screens', 'node', ['scripts/web.mjs', 'check']]);
 }
 

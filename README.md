@@ -43,5 +43,6 @@ Actions secrets (the `github` step does it where `gh` is logged in): CI ships.
 A push to main ships by itself (`.github/workflows/ship.yml`): an over-the-air update for JavaScript
 changes, a TestFlight build with a new version number when the native project changed. The
 changelog section becomes TestFlight's "What to Test". `npm run update` and `npm run build:ios` do
-the same thing by hand. `.github/workflows/testflight-refresh.yml` rebuilds on the 1st of every
-month so the TestFlight build never expires.
+the same thing by hand. `.github/workflows/testflight-refresh.yml` checks every day how old
+Apple's newest build is and rebuilds at 28 days, taking Expo's patch releases when every gate passes
+with them, so the TestFlight build never expires and nobody has to do anything.

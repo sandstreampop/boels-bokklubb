@@ -39,14 +39,15 @@ jobs:
     outputs:
       web: ${{ steps.ship.outputs.web }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - name: npm ci (retried; the registry has bad minutes)
+        run: for i in 1 2 3; do npm ci && exit 0; sleep $((i * 30)); done; exit 1
       - name: Git identity for the changelog commit
         run: |
           git config user.name "github-actions[bot]"

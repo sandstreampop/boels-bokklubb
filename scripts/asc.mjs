@@ -34,13 +34,30 @@ export function ascToken() {
   return `${header}.${payload}.${sig}`;
 }
 
-/** One request against the API. `path` is relative to /v1 or a full URL. Throws with the status and body on failure. */
+/**
+ * One request against the API. `path` is relative to /v1 or a full URL. Throws with the status and body on failure.
+ * Reads and PATCHes (idempotent) are retried on network errors, 429 and 5xx: a ship polls Apple for
+ * up to 100 minutes and one blip must not end it. A POST is sent once.
+ */
 export async function asc(path, init = {}) {
   const url = path.startsWith('https://') ? path : `${BASE}/${path}`;
-  const res = await fetch(url, {
-    ...init,
-    headers: { authorization: `Bearer ${ascToken()}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
-  });
+  const method = init.method ?? 'GET';
+  const attempts = method === 'POST' ? 1 : 5;
+  let res;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      res = await fetch(url, {
+        ...init,
+        headers: { authorization: `Bearer ${ascToken()}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
+      });
+      if (attempt >= attempts || (res.status !== 429 && res.status < 500)) break;
+      console.log(`  App Store Connect: ${method} -> ${res.status}; retrying (${attempt}/${attempts - 1})`);
+    } catch (err) {
+      if (attempt >= attempts) throw err;
+      console.log(`  App Store Connect: ${method} failed (${err.message}); retrying (${attempt}/${attempts - 1})`);
+    }
+    await new Promise((r) => setTimeout(r, 10_000 * attempt));
+  }
   const text = await res.text();
   let body;
   try {
@@ -50,7 +67,7 @@ export async function asc(path, init = {}) {
   }
   if (!res.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`${init.method ?? 'GET'} ${url} -> ${res.status}: ${detail.slice(0, 500)}`);
+    throw new Error(`${method} ${url} -> ${res.status}: ${detail.slice(0, 500)}`);
   }
   return body;
 }

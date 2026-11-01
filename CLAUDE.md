@@ -84,6 +84,23 @@ update then publishes exactly that export. And `lib/supabase.ts` throws at load,
 fatal telemetry event, if a bundle without the values ever reaches a phone, so expo-updates falls
 back to the embedded bundle.
 
+## Rule: unattended jobs need nobody
+
+A job that runs without a push (the TestFlight refresh, anything scheduled) must reach its goal
+without a session or a decision from Viktor. Learned 2026-11-01, when the first monthly refresh died
+at expo-doctor because Expo had published SDK patch releases since the last push, and nothing
+would have tried again for a month. So:
+
+- Decide from state, not the calendar: read what is true (App Store Connect's builds) every day and
+  act when it is due. A failed run is then retried by construction, and the margin is a number a
+  test holds, not a hope.
+- Gates check the tree, never the world. A check whose answer changes with no commit (expo-doctor's
+  SDK version match, anything "latest") is not a gate; `scripts/doctor.mjs` is expo-doctor without
+  it, pinned. Drift is taken automatically where it is safe, kept only if every gate passes.
+- Retry what is transient inside the run (`npm ci`, eas-cli reads, App Store Connect), never what
+  creates something (`eas build`, a POST).
+- A push made with the workflow token starts no workflow, so a job that commits ships in the same job.
+
 ## Architecture: state machines first
 
 Every flow with more than one step is an XState v5 machine in `lib/machines/`, and screens are thin:
@@ -137,7 +154,7 @@ file header comment. Reads from the store go through `useStore(selector)` and th
 - `scripts/supabase.mjs` the Management API (migrations, function deploys, secrets), used by
   setup.mjs and ship.mjs. `scripts/web.mjs` dev, build and check of the web version.
 - `.github/workflows/check.yml` on every push and PR, `ship.yml` on push to main (see Shipping),
-  `testflight-refresh.yml` rebuilds monthly so TestFlight builds never expire.
+  `testflight-refresh.yml` daily: rebuilds when Apple's newest build is 28 days old, so it never expires.
 
 ## Observability (the testing loop)
 
@@ -147,7 +164,7 @@ crashes (via `components/ErrorBoundary.tsx`) and abnormal exits (launch marker) 
 with the breadcrumbs before them. When Viktor reports something broke: `npm run logs -- --since 1h`
 then `npm run logs -- --session <id>` for the full trail of that launch. New code must log through
 `info`/`warn`/`captureError`/`traced`, never swallow an error silently, and use `useScreen` in new
-screens. Run `npx expo-doctor` before every build: a missing native peer dependency crashes a
+screens. Run `node scripts/doctor.mjs` before every build: a missing native peer dependency crashes a
 TestFlight build without any JS error. The web version logs errors through the `feed` function
 into `app_events` (source `feed`, `npm run logs -- --event feed` and `--event web`), never page
 loads or plays.
@@ -185,7 +202,11 @@ no longer publish each other's half-done tree. Sessions do not run `npm run upda
   updates reaching the installed build. Updates never change the version.
 - After a native build the ship waits for Apple to process it and writes the section into
   TestFlight's "What to Test" (scripts/asc.mjs, Swedish locale). Nothing in the app shows a version.
-- `testflight-refresh.yml` is the same native ship monthly, with "Monthly refresh, nothing new".
+- `testflight-refresh.yml` is the same native ship, decided daily from App Store Connect: when the
+  newest live build is 28 days old (`scripts/refresh.mjs`, `tests/refresh.test.ts`) it takes Expo's
+  SDK patch releases if every gate and the bundle proof pass with them (else rebuilds the shipped
+  tree), and ships "Monthly refresh, nothing new". A failed day is retried the next day: 62 tries
+  before Apple's 90 days run out, an error annotation from day 45. Run it by hand with `force`.
 
 ## Commands
 

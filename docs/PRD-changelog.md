@@ -43,8 +43,9 @@ Workflows in `.github/workflows/`:
    - native: bumps the minor version, moves Unreleased into `## x.y.0 (build N, date, TestFlight)`,
      pushes that commit with `[skip ci]`, runs `eas build --auto-submit --non-interactive`, waits,
      polls App Store Connect until processed, writes "What to Test".
-3. `testflight-refresh.yml` stays for the monthly expiry rebuild and gets the same version bump
-   and changelog section (text: "Monthly refresh, nothing new").
+3. `testflight-refresh.yml` stays for the expiry rebuild and gets the same version bump and
+   changelog section (text: "Monthly refresh, nothing new"). Since 2026-11-01 it is a daily guard
+   decided from App Store Connect, not a cron that builds once: see `scripts/refresh.mjs`.
 
 Secrets in the repo: the six Apple and Expo ones Viktor adds by hand, plus `SUPABASE_URL` and
 `SUPABASE_ACCESS_TOKEN` for migrations. The default `GITHUB_TOKEN` with `contents: write` pushes

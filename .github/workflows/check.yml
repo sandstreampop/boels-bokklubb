@@ -17,19 +17,21 @@ jobs:
     environment: main
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - name: npm ci (retried; the registry has bad minutes)
+        run: for i in 1 2 3; do npm ci && exit 0; sleep $((i * 30)); done; exit 1
       - run: npm run typecheck
       - run: npm run lint
       - name: The machines keep their invariants (tests/)
         run: npm test
-      - run: npx expo-doctor
+      - name: expo-doctor (the tree, not Expo's release calendar; see scripts/doctor.mjs)
+        run: node scripts/doctor.mjs
       - name: Changelog line for every change Boel or a relative sees
         run: node scripts/changelog.mjs check
       - name: The phone layout is unchanged (lib/layout.ts in compact)

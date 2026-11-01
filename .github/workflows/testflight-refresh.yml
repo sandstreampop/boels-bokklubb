@@ -1,42 +1,86 @@
-# TestFlight builds expire after 90 days. This rebuilds and resubmits on the 1st of every month,
-# and can be run by hand from the Actions tab. It is the same ship as a native build from
-# ship.yml: the version bumps, the changelog gets a section ("Monthly refresh, nothing new" when
-# there is nothing under Unreleased) and TestFlight's "What to Test" is written. Same secrets as
-# ship.yml, set by hand in Settings → Secrets and variables → Actions.
+# The family's TestFlight build never expires, and nobody has to do anything for that. Apple
+# expires a build 90 days after upload; this guard runs every day, asks App Store Connect how old
+# the newest live build is and rebuilds once it is 28 days old (scripts/refresh.mjs, held by
+# tests/refresh.test.ts). A failed run is retried the next day by construction, since the state it
+# reads has not changed: 62 attempts before anything expires. Any native ship resets the clock.
+#
+# Learned 2026-11-01: the first version was a cron on the 1st that built once. It died at
+# expo-doctor because Expo had published SDK patch releases since the last push, and nothing would
+# have tried again for a month. Now: the decision is state, not calendar; the gates check the tree,
+# not Expo's release calendar (scripts/doctor.mjs); the rebuild takes Expo's patch releases itself
+# when every gate and the bundle proof pass with them, and rebuilds the shipped tree when they do
+# not (scripts/ship.mjs takeExpoPatches); every network read inside it is retried; and from day 45
+# every run raises an error annotation.
+#
+# The rebuild is the same ship as a native build from ship.yml: the version bumps, the changelog
+# gets a section and TestFlight's "What to Test" is written, all in this job (a push made with the
+# workflow token starts no workflow). Its changelog commit also keeps the repository active, so
+# GitHub never disables this schedule (it does after 60 idle days in a public repository).
+# "Run workflow" by hand with force rebuilds today whatever the age.
 name: TestFlight refresh
 
 on:
   schedule:
-    - cron: '17 6 1 * *'
+    - cron: '17 6 * * *'
   workflow_dispatch:
-
-concurrency:
-  group: ship
-  cancel-in-progress: false
+    inputs:
+      force:
+        description: Rebuild now, whatever the age of the newest build
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
-  build-and-submit:
+  # Cheap and outside the ship queue: most days it says "nothing to do" in seconds.
+  decide:
     runs-on: ubuntu-latest
     environment: main
-    timeout-minutes: 120
+    timeout-minutes: 15
+    outputs:
+      due: ${{ steps.decide.outputs.due }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Is the newest TestFlight build due for a rebuild?
+        id: decide
+        run: node scripts/ship.mjs refresh --check
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+
+  build-and-submit:
+    needs: decide
+    if: ${{ needs.decide.outputs.due == 'true' || inputs.force }}
+    runs-on: ubuntu-latest
+    environment: main
+    timeout-minutes: 150
+    # Queued behind any ship from ship.yml; the step below decides again once it gets its turn,
+    # so a native ship that ran meanwhile means nothing is built twice.
+    concurrency:
+      group: ship
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - name: npm ci (retried; the registry has bad minutes)
+        run: for i in 1 2 3; do npm ci && exit 0; sleep $((i * 30)); done; exit 1
       - name: Git identity for the changelog commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Build, submit, write What to Test
-        run: node scripts/ship.mjs build --refresh
+        run: node scripts/ship.mjs ${{ inputs.force && 'build --refresh' || 'refresh' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
